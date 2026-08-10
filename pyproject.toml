@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "policy-review-agent"
+version = "0.1.0"
+description = "Policy Review Assistant: ZenML knowledge pipeline + LangGraph human-in-the-loop review workflow"
+requires-python = ">=3.10"
+dependencies = [
+    "langgraph>=0.2",
+    "langgraph-checkpoint-sqlite>=2.0",
+    "chromadb>=0.5",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# `local` brings the SQLAlchemy-backed local metadata store the orchestrator
+# needs to record runs; plain `zenml` cannot run a pipeline locally.
+ingestion = ["zenml[local]>=0.70"]
+live = ["anthropic>=0.40"]
+dev = ["pytest>=8.0", "pytest-timeout>=2.3"]
+
+[project.scripts]
+policy-ingest = "cli.ingest:main"
+policy-review = "cli.review:main"
+
+[tool.setuptools]
+packages = ["agent", "agent.nodes", "agent.retrieval", "agent.risk", "agent.human_review", "agent.llm",
+            "ingestion", "ingestion.pipelines", "ingestion.steps", "ingestion.chunking", "ingestion.evaluation",
+            "shared", "config", "cli"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "zenml: exercises the real ZenML orchestrator (slow; run with -m zenml)",
+    "subprocess: spawns a separate OS process to prove checkpoint recovery",
+]
+filterwarnings = ["ignore::DeprecationWarning"]

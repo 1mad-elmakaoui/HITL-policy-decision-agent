@@ -1,0 +1,51 @@
+# Policy Review Assistant configuration.
+
+
+
+#knowledge layer (ZenML ingestion pipeline)
+corpus_dir: policy_corpus
+vector_store_backend: chroma          # chroma | memory
+vector_store_dir: .policy_index
+vector_store_collection: policy_chunks
+
+embedding_provider: hashing           # hashing | sentence-transformers
+embedding_model: ""
+embedding_dimension: 16384
+
+# Section-aware chunking: a section is the natural retrieval unit for a policy
+# manual. These bounds only apply when a single section is too long to stand as
+# one chunk. See ingestion/chunking/section_chunker.py.
+max_chunk_chars: 1400
+chunk_overlap_chars: 160
+
+#runtime layer (the LangGraph agent)
+checkpoint_db: .policy_state/checkpoints.sqlite
+observability_log: .policy_state/events.jsonl
+
+llm_provider: mock                    
+llm_model: claude-sonnet-4-5
+llm_max_tokens: 1200
+
+retrieval:
+  top_k: 5
+  strong_evidence_score: 1.00
+  weak_evidence_score: 0.55
+  min_supporting_chunks: 2
+
+evaluation:
+  k: 5
+  eval_set_path: ingestion/eval/policy_eval_set.yaml
+  min_recall_at_k: 0.80
+  min_mrr: 0.60
+  min_ndcg_at_k: 0.60
+  # When true, an ingestion run whose retrieval quality regresses below these
+  # thresholds fails instead of publishing a degraded index.
+  fail_pipeline_below_threshold: true
+
+risk:
+  use_llm_second_opinion: true
+  # The model may only RAISE the deterministic risk level, never lower it.
+  escalate_only_llm: true
+  # A classifier failure is treated as high risk, so errors route into human
+  # review rather than past it.
+  high_risk_on_classifier_error: true
