@@ -1,0 +1,127 @@
+# Offline retrieval evaluation set.
+#
+# Relevance is labelled by (document_id, section) rather than by raw chunk id, so
+# the eval set survives re-chunking and version bumps. The evaluation step
+# resolves each label to the chunk ids currently in the index.
+#
+# calling for *negative* cases -- "controlled simulations
+# of edge cases" -- so questions with no answer in the corpus are included with
+# an empty `relevant` list. For those, the assertion is that the top similarity
+# stays below the runtime's weak-evidence threshold, i.e. that the retriever
+# produces no misleading evidence rather than its least-bad guess.
+#
+# Coverage checking: when live query patterns drift away from
+# this set, add cases here and re-run ingestion.
+
+k: 5
+
+queries:
+  # --- high-risk employment actions --------------------------------------
+  - id: eval-terminate-immediately
+    question: Can we terminate an employee immediately for expense fraud?
+    relevant:
+      - document_id: HR-POL-001
+        section_contains: Summary Dismissal
+      - document_id: HR-POL-001
+        section_contains: Investigation Requirements
+      - document_id: HR-POL-001
+        section_contains: Approval Authority
+
+  - id: eval-demotion-approval
+    question: Who has to approve demoting an employee to a lower job level?
+    relevant:
+      - document_id: HR-POL-001
+        section_contains: Approval Authority
+
+  - id: eval-suspend-pending-investigation
+    question: Can we suspend an employee while we investigate an allegation?
+    relevant:
+      - document_id: HR-POL-001
+        section_contains: Suspension Pending Investigation
+
+  - id: eval-skip-warning-stage
+    question: Is it allowed to skip a written warning and go straight to a final warning?
+    relevant:
+      - document_id: HR-POL-001
+        section_contains: Progressive Discipline
+
+  - id: eval-discipline-after-complaint
+    question: An employee raised a harassment complaint last month. Can we discipline them now?
+    relevant:
+      - document_id: HR-POL-001
+        section_contains: Protected Characteristics
+
+  - id: eval-terminate-underperformance
+    question: Can we terminate someone for sustained underperformance?
+    relevant:
+      - document_id: HR-POL-001
+        section_contains: Performance Management
+
+  # --- low-risk operational questions ------------------------------------
+  - id: eval-carry-over-leave
+    question: How many days of annual leave can be carried over to next year?
+    relevant:
+      - document_id: HR-POL-002
+        section_contains: Carry-Over
+
+  - id: eval-sick-note
+    question: When does an employee need a medical certificate for sick leave?
+    relevant:
+      - document_id: HR-POL-002
+        section_contains: Sick Leave
+
+  - id: eval-parental-leave
+    question: What parental leave is the primary caregiver entitled to?
+    relevant:
+      - document_id: HR-POL-002
+        section_contains: Parental Leave
+
+  - id: eval-expense-approval-threshold
+    question: Who approves an expense claim of 900 currency units?
+    relevant:
+      - document_id: FIN-POL-004
+        section_contains: Approval Thresholds
+
+  - id: eval-business-class
+    question: Is business class travel allowed for a long flight?
+    relevant:
+      - document_id: FIN-POL-004
+        section_contains: Travel Booking
+
+  - id: eval-receipt-deadline
+    question: What is the deadline for submitting an expense claim with receipts?
+    relevant:
+      - document_id: FIN-POL-004
+        section_contains: Submission and Receipts
+
+  # --- adjacent / boundary cases -----------------------------------------
+  - id: eval-revoke-access-on-suspension
+    question: Can we revoke system access immediately when an employee is suspended?
+    relevant:
+      - document_id: SEC-POL-002
+        section_contains: Revocation on Role Change
+
+  - id: eval-targeted-monitoring
+    question: Can we monitor a specific employee's system activity during an investigation?
+    relevant:
+      - document_id: SEC-POL-002
+        section_contains: Monitoring of Employee Activity
+
+  - id: eval-deduct-from-pay
+    question: Can we deduct a disputed expense overpayment from an employee's salary?
+    relevant:
+      - document_id: FIN-POL-004
+        section_contains: Suspected Expense Fraud
+
+  # --- negative cases: no supporting policy exists ------------------------
+  - id: eval-negative-quantum
+    question: What is the company position on quantum computing procurement?
+    relevant: []
+
+  - id: eval-negative-weather
+    question: What will the weather be like in Lisbon next Tuesday?
+    relevant: []
+
+  - id: eval-negative-pet-policy
+    question: Is my iguana allowed to attend the annual shareholder meeting?
+    relevant: []
