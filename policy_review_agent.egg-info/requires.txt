@@ -1,0 +1,14 @@
+langgraph>=0.2
+langgraph-checkpoint-sqlite>=2.0
+chromadb>=0.5
+pyyaml>=6.0
+
+[dev]
+pytest>=8.0
+pytest-timeout>=2.3
+
+[ingestion]
+zenml[local]>=0.70
+
+[live]
+anthropic>=0.40

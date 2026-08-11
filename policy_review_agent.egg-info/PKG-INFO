@@ -1,0 +1,16 @@
+Metadata-Version: 2.4
+Name: policy-review-agent
+Version: 0.1.0
+Summary: Policy Review Assistant: ZenML knowledge pipeline + LangGraph human-in-the-loop review workflow
+Requires-Python: >=3.10
+Requires-Dist: langgraph>=0.2
+Requires-Dist: langgraph-checkpoint-sqlite>=2.0
+Requires-Dist: chromadb>=0.5
+Requires-Dist: pyyaml>=6.0
+Provides-Extra: ingestion
+Requires-Dist: zenml[local]>=0.70; extra == "ingestion"
+Provides-Extra: live
+Requires-Dist: anthropic>=0.40; extra == "live"
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: pytest-timeout>=2.3; extra == "dev"
