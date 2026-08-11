@@ -1,3 +1,0 @@
-[console_scripts]
-policy-ingest = cli.ingest:main
-policy-review = cli.review:main

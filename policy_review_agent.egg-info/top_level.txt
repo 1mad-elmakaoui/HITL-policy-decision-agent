@@ -1,5 +1,0 @@
-agent
-cli
-config
-ingestion
-shared
