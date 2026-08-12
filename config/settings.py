@@ -1,4 +1,4 @@
-"""single source of configuration for both layers.
+"""Single source of configuration for both layers.
 
 Layered resolution: dataclass defaults, then ``config/policy_review.yaml``, then
 environment variables (``POLICY_REVIEW_*``). Ingestion and runtime read the same
@@ -27,11 +27,15 @@ class RetrievalSettings:
     """Runtime retrieval and evidence-gating parameters.
 
     ``strong_evidence_score`` / ``weak_evidence_score`` implement the agentic RAG
-    recipe's evidence grade : evidence quality is a
+    recipe's evidence grade (LangGraph paper section 4.2): evidence quality is a
     routing input held in state, not a sentence buried in a prompt.
     """
 
     top_k: int = 5
+    # Thresholds are on the BM25 scale the default embedder produces, and are
+    # calibrated by the ingestion pipeline's evaluation step against the labelled
+    # query set (see ingestion/steps/evaluate_retrieval.py). Changing the
+    # embedding provider changes the scale, so they must be re-calibrated with it.
     strong_evidence_score: float = 1.00
     weak_evidence_score: float = 0.55
     min_supporting_chunks: int = 2
@@ -41,9 +45,7 @@ class RetrievalSettings:
 class EvaluationSettings:
     """Offline retrieval-evaluation gate for the ingestion pipeline.
 
-    RAGOps section 4.2.5 prescribes offline testing at three levels of
-    granularity (module, component, end-to-end) and names the component-level
-    metrics used here: MRR, recall@K, precision@K and nDCG (Table 1).
+
     """
 
     k: int = 5
@@ -80,7 +82,7 @@ class Settings:
     embedding_provider: str = "hashing"
     embedding_model: str = ""
     embedding_dimension: int = 16384
-    max_chunk_chars: int = 1400
+    max_chunk_chars: int = 1400 
     chunk_overlap_chars: int = 160
 
     # --- runtime layer ---------------------------------------------------
@@ -175,8 +177,17 @@ def load_settings(config_file: Optional[Path | str] = None) -> Settings:
         _apply_mapping(settings, raw)
 
     _apply_environment(settings)
+
+    # In mock mode the deterministic providers are mandatory, not merely the
+    # default: a mock run that silently reached for a live provider would defeat
+    # the reproducibility the mode exists to give.
     if settings.run_mode.is_mock:
         settings.llm_provider = "mock"
         settings.embedding_provider = "hashing"
+    elif settings.llm_provider == "mock":
+        # Live mode with the mock provider still selected is almost always a
+        # half-finished switch, and it fails silently: the graph runs, the
+        # answers just are not from a model. Prefer the real provider.
+        settings.llm_provider = "anthropic"
 
     return settings

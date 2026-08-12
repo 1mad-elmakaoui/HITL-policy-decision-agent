@@ -19,21 +19,30 @@ dependencies = [
 # needs to record runs; plain `zenml` cannot run a pipeline locally.
 ingestion = ["zenml[local]>=0.70"]
 live = ["anthropic>=0.40"]
+web = ["fastapi>=0.110", "uvicorn[standard]>=0.27"]
 dev = ["pytest>=8.0", "pytest-timeout>=2.3"]
 
 [project.scripts]
 policy-ingest = "cli.ingest:main"
 policy-review = "cli.review:main"
+policy-web = "webapp.server:main"
+
+[tool.setuptools.package-data]
+webapp = ["static/*"]
 
 [tool.setuptools]
 packages = ["agent", "agent.nodes", "agent.retrieval", "agent.risk", "agent.human_review", "agent.llm",
             "ingestion", "ingestion.pipelines", "ingestion.steps", "ingestion.chunking", "ingestion.evaluation",
-            "shared", "config", "cli"]
+            "shared", "config", "cli", "webapp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-    "zenml: exercises the real ZenML orchestrator (slow; run with -m zenml)",
+    # Runs by default, and should: it is the only test that exercises the real
+    # orchestrator, so it is the only thing that catches pipeline-wiring bugs
+    # the plain step functions cannot see. Deselect with -m "not zenml" when
+    # iterating on something unrelated.
+    "zenml: exercises the real ZenML orchestrator (slower than the rest)",
     "subprocess: spawns a separate OS process to prove checkpoint recovery",
 ]
 filterwarnings = ["ignore::DeprecationWarning"]
