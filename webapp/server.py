@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
 from agent.human_review.decision import InvalidReviewInput
@@ -58,18 +58,58 @@ class ResumeRequest(BaseModel):
 
 
 @app.get("/")
-def index() -> FileResponse:
-    return FileResponse(STATIC / "index.html")
+def index():
+    """Serve the page, or explain clearly why it cannot be served.
+
+    An empty index.html returns HTTP 200 with a zero-byte body, which a browser
+    renders as a blank white page with no error anywhere - the least debuggable
+    failure this app can have. Checked here so the page says what is wrong.
+    """
+    page = STATIC / "index.html"
+
+    if not page.exists():
+        return _setup_error(f"{page} does not exist.")
+    if page.stat().st_size == 0:
+        return _setup_error(f"{page} is empty (0 bytes) - the file was created but never filled in.")
+
+    return FileResponse(page)
+
+
+def _setup_error(problem: str) -> HTMLResponse:
+    return HTMLResponse(
+        status_code=500,
+        content=f"""<!doctype html><meta charset="utf-8">
+<title>Setup problem</title>
+<body style="background:#0b0f1a;color:#e8edf7;font:15px/1.6 system-ui;padding:48px;max-width:720px;margin:auto">
+<h1 style="color:#ff5f6d;font-size:20px">The interface cannot start</h1>
+<p style="color:#8b98b0">{problem}</p>
+<p style="color:#8b98b0">Copy the full contents of <code>webapp/static/index.html</code> into that
+file, save it, and reload this page. The server does not need restarting - the
+file is read on every request.</p>
+<p style="color:#5d6b85;font-size:13px">The API itself is running:
+<a style="color:#5b8cff" href="/api/status">/api/status</a> should return JSON.</p>
+</body>""",
+    )
 
 
 @app.get("/api/status")
 def status() -> Dict[str, Any]:
     """Run mode and index health, shown in the header."""
     settings = load_settings()
+    key_present = bool(os.environ.get("ANTHROPIC_API_KEY"))
+
     payload: Dict[str, Any] = {
         "run_mode": settings.run_mode.value,
         "llm_provider": settings.llm_provider,
         "llm_model": settings.llm_model if settings.llm_provider != "mock" else "deterministic mock",
+        "api_key_present": key_present,
+        # An API key sitting unused because the run mode was never switched is
+        # invisible otherwise: the app works, it just is not using the model.
+        "hint": (
+            "ANTHROPIC_API_KEY is set but the run mode is mock, so the key is unused. "
+            "Restart with: python -m webapp --live"
+            if key_present and settings.run_mode.is_mock else ""
+        ),
         "index": None,
         "index_error": None,
     }
@@ -150,12 +190,43 @@ def trace(thread_id: str) -> Dict[str, Any]:
 
 
 def main() -> None:
+    import argparse
+
     import uvicorn
 
-    host = os.environ.get("POLICY_REVIEW_HOST", "127.0.0.1")
-    port = int(os.environ.get("POLICY_REVIEW_PORT", "8000"))
-    print(f"\n  Policy Review Assistant  ->  http://{host}:{port}\n")
-    uvicorn.run(app, host=host, port=port, log_level="warning")
+    parser = argparse.ArgumentParser(description="Policy Review Assistant web interface")
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        help="use the real model (requires ANTHROPIC_API_KEY)",
+    )
+    parser.add_argument("--host", default=os.environ.get("POLICY_REVIEW_HOST", "127.0.0.1"))
+    parser.add_argument("--port", type=int, default=int(os.environ.get("POLICY_REVIEW_PORT", "8000")))
+    args = parser.parse_args()
+
+    if args.live:
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            parser.error(
+                "--live needs ANTHROPIC_API_KEY.\n"
+                "  PowerShell:  $env:ANTHROPIC_API_KEY = 'sk-ant-...'\n"
+                "  cmd:         set ANTHROPIC_API_KEY=sk-ant-...\n"
+                "  bash:        export ANTHROPIC_API_KEY=sk-ant-..."
+            )
+        # Settings are read per request, so setting this before the server
+        # starts is enough - every request sees live mode.
+        os.environ["POLICY_REVIEW_RUN_MODE"] = "live"
+
+    settings = load_settings()
+    mode = "LIVE" if not settings.run_mode.is_mock else "MOCK"
+    model = settings.llm_model if not settings.run_mode.is_mock else "deterministic mock"
+
+    print(f"\n  Policy Review Assistant  ->  http://{args.host}:{args.port}")
+    print(f"  mode: {mode}  ({model})")
+    if settings.run_mode.is_mock and os.environ.get("ANTHROPIC_API_KEY"):
+        print("  note: ANTHROPIC_API_KEY is set but unused - restart with --live to use it")
+    print()
+
+    uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 
 
 if __name__ == "__main__":

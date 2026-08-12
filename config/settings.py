@@ -82,7 +82,7 @@ class Settings:
     embedding_provider: str = "hashing"
     embedding_model: str = ""
     embedding_dimension: int = 16384
-    max_chunk_chars: int = 1400
+    max_chunk_chars: int = 1400 
     chunk_overlap_chars: int = 160
 
     # --- runtime layer ---------------------------------------------------
