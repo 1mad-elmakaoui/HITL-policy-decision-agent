@@ -1,9 +1,14 @@
 """Pipeline step 2 -- parse raw documents into structured policy documents."""
 
-from __future__ import annotations
+# NOTE: no `from __future__ import annotations` in this module, deliberately.
+# It turns every annotation into a string, and ZenML resolves step signatures
+# without evaluating strings on some versions (0.92 does not, 0.96 does). The
+# symptoms are remote from the cause: a two-artifact step silently registers a
+# single output called "output", and single-output steps fail inside the
+# materializer registry with "'str' object has no attribute '__mro__'".
 
 import re
-from typing import Any
+from typing import Any, Dict, List
 
 import yaml
 
@@ -22,11 +27,11 @@ class MalformedPolicyDocument(ValueError):
     """
 
 
-def parse_documents(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def parse_documents(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return [parse_document(record).to_dict() for record in records]
 
 
-def parse_document(record: dict[str, Any]) -> PolicyDocument:
+def parse_document(record: Dict[str, Any]) -> PolicyDocument:
     raw_text = record.get("raw_text", "")
     source = record.get("source", record.get("filename", "unknown"))
 
@@ -68,9 +73,9 @@ def parse_document(record: dict[str, Any]) -> PolicyDocument:
     return document
 
 
-def _split_sections(body: str) -> list[dict[str, str]]:
+def _split_sections(body: str) -> List[Dict[str, str]]:
     headings = list(_HEADING_RE.finditer(body))
-    sections: list[dict[str, str]] = []
+    sections: List[Dict[str, str]] = []
 
     preamble = body[: headings[0].start()].strip() if headings else body.strip()
     if preamble:
@@ -90,7 +95,7 @@ try:  # pragma: no cover
     from zenml import step
 
     @step(enable_cache=True)
-    def parse_documents_step(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def parse_documents_step(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return parse_documents(records)
 
 except ImportError:  # pragma: no cover

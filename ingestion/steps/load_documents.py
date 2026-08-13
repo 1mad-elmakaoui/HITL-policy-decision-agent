@@ -2,16 +2,21 @@
 
 """
 
-from __future__ import annotations
+# NOTE: no `from __future__ import annotations` in this module, deliberately.
+# It turns every annotation into a string, and ZenML resolves step signatures
+# without evaluating strings on some versions (0.92 does not, 0.96 does). The
+# symptoms are remote from the cause: a two-artifact step silently registers a
+# single output called "output", and single-output steps fail inside the
+# materializer registry with "'str' object has no attribute '__mro__'".
 
 import datetime as _dt
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List
 
 SUPPORTED_SUFFIXES = {".md", ".markdown", ".txt"}
 
 
-def load_documents(corpus_dir: str) -> list[dict[str, Any]]:
+def load_documents(corpus_dir: str) -> List[Dict[str, Any]]:
     """Read every supported document under ``corpus_dir``.
 
     Returns raw records -- text plus file-level provenance -- with no parsing of
@@ -21,7 +26,7 @@ def load_documents(corpus_dir: str) -> list[dict[str, Any]]:
     if not root.exists():
         raise FileNotFoundError(f"Policy corpus directory not found: {root}")
 
-    records: list[dict[str, Any]] = []
+    records: List[Dict[str, Any]] = []
     for path in sorted(root.rglob("*")):
         if not path.is_file() or path.suffix.lower() not in SUPPORTED_SUFFIXES:
             continue
@@ -51,7 +56,7 @@ try:  # pragma: no cover - the decorated form is exercised by the ZenML test
     from zenml import step
 
     @step(enable_cache=True)
-    def load_documents_step(corpus_dir: str) -> list[dict[str, Any]]:
+    def load_documents_step(corpus_dir: str) -> List[Dict[str, Any]]:
         """ZenML step wrapper. Caching is enabled: an unchanged corpus does not
         need re-reading, which is what makes a re-run cheap after a policy edit
         touches only one document."""

@@ -6,9 +6,14 @@ After this step returns, the runtime can read the index. The runtime never
 writes to it.
 """
 
-from __future__ import annotations
+# NOTE: no `from __future__ import annotations` in this module, deliberately.
+# It turns every annotation into a string, and ZenML resolves step signatures
+# without evaluating strings on some versions (0.92 does not, 0.96 does). The
+# symptoms are remote from the cause: a two-artifact step silently registers a
+# single output called "output", and single-output steps fail inside the
+# materializer registry with "'str' object has no attribute '__mro__'".
 
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from shared.embeddings import build_embedder, coerce_embedder_state, save_embedder_state
 from shared.schema import PolicyChunk
@@ -16,15 +21,15 @@ from shared.vector_store import build_vector_store
 
 
 def index_chunks(
-    chunks: list[dict[str, Any]],
-    vectors: list[list[float]],
+    chunks: List[Dict[str, Any]],
+    vectors: List[List[float]],
     backend: str = "chroma",
     persist_directory: str = ".policy_index",
     collection: str = "policy_chunks",
     embedding_model: str = "",
-    embedder_state: dict[str, Any] | None = None,
+    embedder_state: Optional[Dict[str, Any]] = None,
     reconcile: bool = True,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     parsed = [PolicyChunk.from_dict(raw) for raw in chunks]
     dimension = len(vectors[0]) if vectors else 0
     state = coerce_embedder_state(embedder_state)
@@ -73,14 +78,14 @@ try:  # pragma: no cover
 
     @step(enable_cache=False)
     def index_chunks_step(
-        chunks: list[dict[str, Any]],
-        vectors: list[list[float]],
+        chunks: List[Dict[str, Any]],
+        vectors: List[List[float]],
         backend: str = "chroma",
         persist_directory: str = ".policy_index",
         collection: str = "policy_chunks",
         embedding_model: str = "",
-        embedder_state: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+        embedder_state: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """Caching is disabled here on purpose: this step has a side effect
         outside the ZenML artifact store, so a cache hit would report success
         while leaving the actual index untouched."""

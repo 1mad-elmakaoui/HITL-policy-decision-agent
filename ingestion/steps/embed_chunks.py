@@ -5,7 +5,12 @@ emits an embedding report alongside the vectors so a later run can be compared
 against an earlier one -
 """
 
-from __future__ import annotations
+# NOTE: no `from __future__ import annotations` in this module, deliberately.
+# It would turn the return annotation below into a string, and ZenML resolves
+# the signature without evaluating strings on some versions (0.92 does not,
+# 0.96 does). The result is that a step declaring two artifacts silently
+# registers one called "output", and the pipeline fails much later with an
+# unrelated-looking StepInterfaceError. Keep the annotations as real objects.
 
 from typing import Annotated, Any, Dict, List, Tuple
 

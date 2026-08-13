@@ -16,9 +16,14 @@ Every step is also importable as a plain function, so each is unit-testable
 without an orchestrator (see ``tests/ingestion/``).
 """
 
-from __future__ import annotations
+# NOTE: no `from __future__ import annotations` in this module, deliberately.
+# It turns every annotation into a string, and ZenML resolves step signatures
+# without evaluating strings on some versions (0.92 does not, 0.96 does). The
+# symptoms are remote from the cause: a two-artifact step silently registers a
+# single output called "output", and single-output steps fail inside the
+# materializer registry with "'str' object has no attribute '__mro__'".
 
-from typing import Any
+from typing import Any, Dict, Optional
 
 from zenml import pipeline
 
@@ -104,8 +109,8 @@ def policy_ingestion_pipeline(
 
 
 def run_policy_ingestion(
-    settings: Settings | None = None, strict_verification: bool = True
-) -> dict[str, Any]:
+    settings: Optional[Settings] = None, strict_verification: bool = True
+) -> Dict[str, Any]:
     """Run the pipeline with the project's configuration."""
     settings = settings or load_settings()
     settings.vector_store_path.mkdir(parents=True, exist_ok=True)
