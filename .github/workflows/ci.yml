@@ -99,6 +99,9 @@ jobs:
       - name: Install
         run: pip install -e ".[ingestion,dev]"
 
+      - name: Record the ZenML version
+        run: pip show zenml | head -2
+
       # Verification, chunking, reconciliation and the quality gate, tested as
       # units before the pipeline is run for real.
       - name: Ingestion step tests
