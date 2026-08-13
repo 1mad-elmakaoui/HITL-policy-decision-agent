@@ -1,0 +1,227 @@
+# Continuous integration for the Policy Review Assistant.
+#
+# The pipeline mirrors the architecture. The project is two systems that share
+# one interface, and the second cannot be tested until the first has produced
+# its output:
+#
+#   quality        lint and the tests that need no index
+#      |
+#   knowledge      ZenML builds and evaluates the policy index, uploads it
+#      |
+#   orchestration  LangGraph downloads that index and tests the agent against it
+#      |
+#   governance     collects the evidence the run produced and checks the
+#                  human-oversight gate actually fired
+#
+# A broken policy corpus never reaches the agent tests, and a run where the
+# high-risk gate did not fire does not pass.
+#
+# No API keys are involved. POLICY_REVIEW_RUN_MODE=mock selects deterministic
+# providers, so CI exercises the same graph, interrupts and checkpointing as a
+# real deployment. Only the model behind the drafting step is replaced.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  POLICY_REVIEW_RUN_MODE: mock
+  ZENML_ANALYTICS_OPT_IN: "false"
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: "utf-8"
+
+jobs:
+  # ------------------------------------------------------------------
+  # Fast feedback. Everything here runs without a policy index, so it fails
+  # in under a minute when something obvious is wrong.
+  # ------------------------------------------------------------------
+  quality:
+    name: Lint and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[dev]" ruff
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Format check
+        run: ruff format --check .
+        continue-on-error: true
+
+      # Pure functions: no graph, no database, no model, no index.
+      # These are the rules that decide whether a human is required, so they
+      # are the first thing that should break if the logic is wrong.
+      - name: Routing rules
+        run: pytest tests/graph/test_routes.py -q
+
+      - name: Risk classification
+        run: pytest tests/risk -q
+
+  # ------------------------------------------------------------------
+  # The knowledge layer. Builds the index and refuses to publish it if the
+  # documents fail verification or retrieval quality has regressed.
+  # ------------------------------------------------------------------
+  knowledge:
+    name: Knowledge layer (ZenML)
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[ingestion,dev]"
+
+      # Verification, chunking, reconciliation and the quality gate, tested as
+      # units before the pipeline is run for real.
+      - name: Ingestion step tests
+        run: pytest tests/ingestion -q
+
+      # Builds the index and runs the retrieval evaluation. Fails the job if a
+      # policy document is malformed, duplicated or superseded, or if recall,
+      # MRR or nDCG fall below the thresholds in config/policy_review.yaml.
+      - name: Build the policy index
+        run: python -m cli.ingest --local
+
+      - name: Index statistics
+        run: python -m cli.ingest --report | tee index-report.json
+
+      - name: Upload the index
+        uses: actions/upload-artifact@v4
+        with:
+          name: policy-index
+          path: .policy_index/
+          retention-days: 14
+
+      - name: Upload the index report
+        uses: actions/upload-artifact@v4
+        with:
+          name: index-report
+          path: index-report.json
+          retention-days: 90
+
+  # ------------------------------------------------------------------
+  # The orchestration layer, tested against the index the job above built.
+  #
+  # Two operating systems on purpose. Linux is what this deploys onto; Windows
+  # is what it is developed on, and path handling is the usual thing that
+  # differs between them.
+  # ------------------------------------------------------------------
+  orchestration:
+    name: Orchestration (${{ matrix.os }})
+    needs: knowledge
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # ZenML is deliberately not installed here. The agent never imports the
+      # ingestion pipeline, and this job proves it: if that separation is ever
+      # broken, the import fails on a runner where ZenML does not exist.
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Get the index from the knowledge job
+        uses: actions/download-artifact@v4
+        with:
+          name: policy-index
+          path: .policy_index/
+
+      - name: Retrieval
+        run: pytest tests/retrieval -q
+
+      - name: Graph execution and observability
+        run: pytest tests/graph -q
+
+      # Interrupt, end the process, resume with the same thread id.
+      - name: Checkpoint recovery
+        run: pytest tests/persistence -q
+
+      # Runs the real service against the real index and prints what happened,
+      # so the log shows the behaviour rather than only a pass count.
+      - name: End-to-end behaviour
+        run: python scripts/ci_smoke.py
+
+      # Kept even when the job fails. It is the record of what the agent did.
+      - name: Upload the audit trail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-trail-${{ matrix.os }}
+          path: .policy_state/events.jsonl
+          if-no-files-found: warn
+          retention-days: 90
+
+  # ------------------------------------------------------------------
+  # Governance evidence.
+  #
+  # This is not a rubber stamp. It reads the audit trail the run produced and
+  # fails if the human-oversight gate did not actually fire, or if any answer
+  # was released for a high-risk request without a recorded reviewer decision.
+  # ------------------------------------------------------------------
+  governance:
+    name: Governance evidence
+    needs: orchestration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Collect the artifacts this run produced
+        uses: actions/download-artifact@v4
+        with:
+          path: evidence/
+
+      - name: Verify the oversight gate fired and write the evidence bundle
+        run: python scripts/governance_report.py evidence/ --out compliance-evidence.md
+
+      - name: Publish to the job summary
+        run: cat compliance-evidence.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the evidence bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-evidence
+          path: compliance-evidence.md
+          retention-days: 365

@@ -1,0 +1,90 @@
+# Supply-chain and secret checks.
+#
+# Runs on every pull request and once a week, because a dependency that was
+# clean on Monday can have a published advisory by Friday without anyone
+# touching the repository.
+
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependencies:
+    name: Dependency audit and SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the full dependency set
+        run: pip install -e ".[ingestion,web,dev]"
+
+      # Known advisories in anything that ends up installed.
+      - name: Audit
+        uses: pypa/gh-action-pip-audit@v1.1.0
+        with:
+          inputs: .
+          ignore-vulns: ""
+
+      # A software bill of materials. Increasingly the first thing a European
+      # enterprise procurement process asks for, and required under the Cyber
+      # Resilience Act for products placed on the EU market.
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+          artifact-name: sbom.cyclonedx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cyclonedx.json
+          retention-days: 365
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The project runs without credentials by design, which is exactly why a
+      # committed key would be easy to miss.
+      - name: Scan history for credentials
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-and-quality
+
+      - uses: github/codeql-action/analyze@v3
