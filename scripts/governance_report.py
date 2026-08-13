@@ -18,6 +18,7 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Dict, List
 
 # Obligation -> what in this repository discharges it. Kept here rather than in
 # prose so it stays next to the check that proves each row.
@@ -46,21 +47,29 @@ AI_ACT_MAP = [
 ]
 
 
-def read_events(root: Path) -> list[dict]:
-    events: list[dict] = []
-    for path in root.rglob("events.jsonl"):
+def read_events(root: Path) -> List[Dict]:
+    """Every audit event, tagged with the artifact it came from.
+
+    One artifact per runner, so the tag is what lets the report distinguish
+    "the gate fired twice" from "the gate fired once on each of two runners".
+    """
+    events: List[Dict] = []
+    for path in sorted(root.rglob("events.jsonl")):
+        source = path.parent.name
         for line in path.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if not line:
                 continue
             try:
-                events.append(json.loads(line))
+                record = json.loads(line)
             except json.JSONDecodeError:
                 continue
+            record["_source"] = source
+            events.append(record)
     return events
 
 
-def read_index_report(root: Path) -> dict:
+def read_index_report(root: Path) -> Dict:
     for path in root.rglob("index-report.json"):
         try:
             return json.loads(path.read_text(encoding="utf-8"))
@@ -69,9 +78,9 @@ def read_index_report(root: Path) -> dict:
     return {}
 
 
-def verify(events: list[dict]) -> list[str]:
+def verify(events: List[Dict]) -> List[str]:
     """Return a list of failures. Empty means the run is sound."""
-    failures: list[str] = []
+    failures: List[str] = []
 
     if not events:
         return ["No audit trail was found. The orchestration job produced no record."]
@@ -104,12 +113,12 @@ def verify(events: list[dict]) -> list[str]:
     return failures
 
 
-def render(events: list[dict], index: dict, failures: list[str]) -> str:
+def render(events: List[Dict], index: Dict, failures: List[str]) -> str:
     paused = [e for e in events if e.get("event") == "node.paused"]
     resumed = [e for e in events if e.get("event") == "request.resumed"]
     threads = {e.get("thread_id") for e in events if e.get("thread_id")}
 
-    lines: list[str] = []
+    lines: List[str] = []
     add = lines.append
 
     add("## Governance evidence")
@@ -133,14 +142,31 @@ def render(events: list[dict], index: dict, failures: list[str]) -> str:
 
     add("### What this run exercised")
     add("")
-    add("| Signal | Count |")
+    sources = sorted({e.get("_source", "?") for e in events})
+    add(f"Aggregated over {len(sources)} audit trail(s): {', '.join(sources)}.")
+    add("")
+    add("| Audit trail | Requests | Suspended | Resumed by a named reviewer | Events |")
+    add("|---|---|---|---|---|")
+    for source in sources:
+        rows = [e for e in events if e.get("_source") == source]
+        add(
+            f"| {source} "
+            f"| {len({r.get('thread_id') for r in rows if r.get('thread_id')})} "
+            f"| {sum(1 for r in rows if r.get('event') == 'node.paused')} "
+            f"| {sum(1 for r in rows if r.get('event') == 'request.resumed')} "
+            f"| {len(rows)} |"
+        )
+    add("")
+    add("| Signal | Total |")
     add("|---|---|")
-    add(f"| Requests traced | {len(threads)} |")
+    add(f"| Distinct requests traced | {len(threads)} |")
     add(f"| Executions suspended for human review | {len(paused)} |")
     add(f"| Resumptions with a named reviewer | {len(resumed)} |")
     add(f"| Audit events recorded | {len(events)} |")
     if index:
-        add(f"| Chunks in the evaluated index | {index.get('chunks', index.get('count', 'n/a'))} |")
+        chunks = index.get("chunk_count", index.get("chunks", "n/a"))
+        add(f"| Chunks in the evaluated index | {chunks} |")
+        add(f"| Retrieval backend | {index.get('backend', 'n/a')} / {index.get('similarity', 'n/a')} |")
     add("")
 
     add("### Obligation coverage")
@@ -160,7 +186,7 @@ def render(events: list[dict], index: dict, failures: list[str]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("evidence_dir", type=Path)
     parser.add_argument("--out", type=Path, default=Path("compliance-evidence.md"))
