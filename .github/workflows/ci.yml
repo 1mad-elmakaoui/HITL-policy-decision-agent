@@ -103,14 +103,8 @@ jobs:
       # Verification, chunking, reconciliation and the quality gate, tested as
       # units before the pipeline is run for real.
       #
-      # TODO: drop `-m "not zenml"` once the orchestrator test passes on this
-      # runner. It passes locally on Windows and Linux with the same ZenML
-      # version; on GitHub's runner ZenML reads one output from a step that
-      # declares two. Deselecting it costs CI its only coverage of the real
-      # orchestrator -- the step functions, chunking, verification and the
-      # quality gate below all remain covered.
       - name: Ingestion step tests
-        run: pytest tests/ingestion -q -m "not zenml"
+        run: pytest tests/ingestion -q
 
       # Builds the index and runs the retrieval evaluation. Fails the job if a
       # policy document is malformed, duplicated or superseded, or if recall,
@@ -121,11 +115,17 @@ jobs:
       - name: Index statistics
         run: python -m cli.ingest --report | tee index-report.json
 
+      # `include-hidden-files` is required: the index lives in `.policy_index`,
+      # and upload-artifact@v4 silently skips dotfiles and dot-directories.
+      # `if-no-files-found: error` makes a missed upload fail here rather than
+      # in the next job as a confusing "artifact not found".
       - name: Upload the index
         uses: actions/upload-artifact@v4
         with:
           name: policy-index
           path: .policy_index/
+          include-hidden-files: true
+          if-no-files-found: error
           retention-days: 14
 
       - name: Upload the index report
@@ -194,6 +194,7 @@ jobs:
         with:
           name: audit-trail-${{ matrix.os }}
           path: .policy_state/events.jsonl
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 90
 
