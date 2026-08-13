@@ -13,14 +13,14 @@ being asked to supply the decision that the model cannot.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from agent.state import PolicyReviewState
 
 
-def build_review_payload(state: PolicyReviewState) -> Dict[str, Any]:
+def build_review_payload(state: PolicyReviewState) -> dict[str, Any]:
     """Assemble everything a reviewer needs to decide."""
-    passages: List[Dict[str, Any]] = list(state.get("policy_passages") or [])
+    passages: list[dict[str, Any]] = list(state.get("policy_passages") or [])
 
     return {
         "kind": "policy_review.human_sign_off_required",

@@ -13,8 +13,9 @@ decision from an identified reviewer.
 from __future__ import annotations
 
 import datetime as _dt
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping
+from typing import Any
 
 from agent.state import (
     DECISION_APPROVED,
@@ -40,7 +41,7 @@ class ReviewDecision:
         # Explicitly, not `decision != rejected`. Only an approval approves.
         return self.decision == DECISION_APPROVED
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "decision": self.decision,
             "reviewer_id": self.reviewer_id,

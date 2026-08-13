@@ -11,7 +11,7 @@ caching or artifact tracking. Production ingestion runs the ZenML pipeline.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from config.settings import Settings, load_settings
 from ingestion.steps.chunk_documents import chunk_documents
@@ -24,10 +24,10 @@ from ingestion.steps.verify_documents import verify_documents
 
 
 def run_ingestion_locally(
-    settings: Optional[Settings] = None,
+    settings: Settings | None = None,
     strict_verification: bool = True,
-    fail_below_threshold: Optional[bool] = None,
-) -> Dict[str, Any]:
+    fail_below_threshold: bool | None = None,
+) -> dict[str, Any]:
     settings = settings or load_settings()
     settings.vector_store_path.mkdir(parents=True, exist_ok=True)
 

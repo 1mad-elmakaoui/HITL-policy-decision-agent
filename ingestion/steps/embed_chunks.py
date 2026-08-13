@@ -7,18 +7,18 @@ against an earlier one -
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from shared.embeddings import embedder_state_of, fit_embedder
 from shared.schema import PolicyChunk
 
 
 def embed_chunks(
-    chunks: List[Dict[str, Any]],
+    chunks: list[dict[str, Any]],
     provider: str = "hashing",
     model_name: str = "",
     dimension: int = 16384,
-) -> Tuple[List[List[float]], Dict[str, Any]]:
+) -> tuple[list[list[float]], dict[str, Any]]:
     """Fit the embedder to this corpus, then embed every chunk.
 
     Fitting happens here rather than at query time because IDF weights are a
@@ -61,18 +61,19 @@ def embed_chunks(
 
 
 try:  # pragma: no cover
-    from typing_extensions import Annotated
+    from typing import Annotated
+
     from zenml import step
 
     @step(enable_cache=True)
     def embed_chunks_step(
-        chunks: List[Dict[str, Any]],
+        chunks: list[dict[str, Any]],
         provider: str = "hashing",
         model_name: str = "",
         dimension: int = 16384,
-    ) -> Tuple[
-        Annotated[List[List[float]], "chunk_embeddings"],
-        Annotated[Dict[str, Any], "embedding_report"],
+    ) -> tuple[
+        Annotated[list[list[float]], "chunk_embeddings"],
+        Annotated[dict[str, Any], "embedding_report"],
     ]:
         # Explicit tuple literal -- see the note in verify_documents.py: ZenML
         # detects multiple outputs from the AST of the `return` statement.

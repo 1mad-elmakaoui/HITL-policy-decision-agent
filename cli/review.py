@@ -16,7 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from typing import Any, Dict
+from typing import Any
 
 from agent.runtime import NotAwaitingReview, PolicyReviewService, UnknownThread
 from config.settings import load_settings
@@ -132,7 +132,7 @@ def _print_result(result: Any) -> None:
         print(f"\n[error] {error}", file=sys.stderr)
 
 
-def _print_review_payload(payload: Dict[str, Any]) -> None:
+def _print_review_payload(payload: dict[str, Any]) -> None:
     print(f"\nrequest   : {payload.get('question', '')}")
     print(f"risk      : {payload.get('risk_level', '')} -- {payload.get('risk_reason', '')}")
     if payload.get("risk_signals"):

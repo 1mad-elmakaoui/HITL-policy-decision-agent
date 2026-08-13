@@ -11,10 +11,16 @@ Two backends implement the same protocol:
 from __future__ import annotations
 
 import threading
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Protocol, Sequence, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
-from shared.embeddings import SIMILARITY_COSINE, SIMILARITY_INNER_PRODUCT, cosine_similarity, inner_product
+from shared.embeddings import (
+    SIMILARITY_COSINE,
+    SIMILARITY_INNER_PRODUCT,
+    cosine_similarity,
+    inner_product,
+)
 from shared.schema import ChunkMetadata, PolicyChunk, RetrievedChunk
 
 
@@ -35,7 +41,7 @@ class IndexStats:
     dimension: int
     similarity: str = SIMILARITY_COSINE
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "backend": self.backend,
             "collection": self.collection,
@@ -53,8 +59,8 @@ class PolicyVectorStore(Protocol):
     def upsert(self, chunks: Sequence[PolicyChunk], vectors: Sequence[Sequence[float]]) -> int: ...
 
     def query(
-        self, vector: Sequence[float], k: int, where: Optional[Dict[str, Any]] = None
-    ) -> List[RetrievedChunk]: ...
+        self, vector: Sequence[float], k: int, where: dict[str, Any] | None = None
+    ) -> list[RetrievedChunk]: ...
 
     def count(self) -> int: ...
 
@@ -81,8 +87,8 @@ class InMemoryPolicyVectorStore:
         self._embedding_model = embedding_model
         self._dimension = dimension
         self._similarity = similarity
-        self._chunks: Dict[str, PolicyChunk] = {}
-        self._vectors: Dict[str, List[float]] = {}
+        self._chunks: dict[str, PolicyChunk] = {}
+        self._vectors: dict[str, list[float]] = {}
         self._lock = threading.Lock()
 
     def upsert(self, chunks: Sequence[PolicyChunk], vectors: Sequence[Sequence[float]]) -> int:
@@ -97,8 +103,8 @@ class InMemoryPolicyVectorStore:
         return len(chunks)
 
     def query(
-        self, vector: Sequence[float], k: int, where: Optional[Dict[str, Any]] = None
-    ) -> List[RetrievedChunk]:
+        self, vector: Sequence[float], k: int, where: dict[str, Any] | None = None
+    ) -> list[RetrievedChunk]:
         if not self._chunks:
             raise VectorStoreUnavailable(
                 f"Collection {self._collection!r} is empty. Run the ingestion pipeline first."
@@ -199,8 +205,8 @@ class ChromaPolicyVectorStore:
         return len(chunks)
 
     def query(
-        self, vector: Sequence[float], k: int, where: Optional[Dict[str, Any]] = None
-    ) -> List[RetrievedChunk]:
+        self, vector: Sequence[float], k: int, where: dict[str, Any] | None = None
+    ) -> list[RetrievedChunk]:
         try:
             total = self._collection.count()
         except Exception as exc:  # noqa: BLE001
@@ -223,7 +229,7 @@ class ChromaPolicyVectorStore:
         metadatas = (result.get("metadatas") or [[]])[0]
         distances = (result.get("distances") or [[]])[0]
 
-        retrieved: List[RetrievedChunk] = []
+        retrieved: list[RetrievedChunk] = []
         for rank, (text, meta, distance) in enumerate(zip(documents, metadatas, distances), start=1):
             chunk = PolicyChunk(text=text, metadata=ChunkMetadata.from_dict(dict(meta)))
             # Chroma returns a *distance*; both the cosine and inner-product
@@ -254,7 +260,7 @@ class ChromaPolicyVectorStore:
         return before - self.count()
 
 
-def _matches(metadata: ChunkMetadata, where: Dict[str, Any]) -> bool:
+def _matches(metadata: ChunkMetadata, where: dict[str, Any]) -> bool:
     for key, expected in where.items():
         if getattr(metadata, key, None) != expected:
             return False

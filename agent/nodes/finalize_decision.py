@@ -24,7 +24,8 @@ who signed off -- so the record survives without the prose.
 from __future__ import annotations
 
 import datetime as _dt
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
+from typing import Any
 
 from agent.observability import EventLog, traced_node
 from agent.state import (
@@ -46,9 +47,9 @@ class HumanReviewBypassError(RuntimeError):
 
 def make_finalize_decision_node(
     log_factory: Callable[[], EventLog],
-) -> Callable[[PolicyReviewState], Dict[str, Any]]:
+) -> Callable[[PolicyReviewState], dict[str, Any]]:
     @traced_node(NODE_NAME, log_factory)
-    def finalize_decision(state: PolicyReviewState) -> Dict[str, Any]:
+    def finalize_decision(state: PolicyReviewState) -> dict[str, Any]:
         _assert_human_review_not_bypassed(state)
 
         review_required = bool(state.get("review_required"))
@@ -96,7 +97,7 @@ def _status_for(state: PolicyReviewState, review_required: bool, decision: str) 
 
 
 def _compose_answer(state: PolicyReviewState, review_required: bool, decision: str) -> str:
-    parts: List[str] = [state.get("draft_answer", "").strip()]
+    parts: list[str] = [state.get("draft_answer", "").strip()]
 
     conditions = [c for c in (state.get("draft_conditions") or []) if str(c).strip()]
     if conditions:
@@ -132,7 +133,7 @@ def _compose_answer(state: PolicyReviewState, review_required: bool, decision: s
     return "\n\n".join(p for p in parts if p)
 
 
-def _build_record(state: PolicyReviewState, status: str, review_required: bool) -> Dict[str, Any]:
+def _build_record(state: PolicyReviewState, status: str, review_required: bool) -> dict[str, Any]:
     passages = state.get("policy_passages") or []
     return {
         "record_id": f"decision-{state.get('request_id', 'unknown')}",

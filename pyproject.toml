@@ -33,10 +33,14 @@ target-version = "py310"
 extend-exclude = [".policy_index", ".policy_state", ".zen"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+# Correctness rules only. `I` (import ordering) and `UP` (pyupgrade) were
+# dropped: together they flagged 419 annotation and import-order rewrites
+# across the tree, none of which is a defect.
+select = ["E4", "E7", "E9", "F", "B"]
 ignore = [
-    "E501",  
-    "B008",  
+    "E501",  # line length is the formatter's concern, not the linter's
+    "B008",  # FastAPI's Depends() in a default argument is idiomatic
+    "B905",  # zip() strict=: the vectors here are aligned by construction
 ]
 
 [tool.setuptools.package-data]

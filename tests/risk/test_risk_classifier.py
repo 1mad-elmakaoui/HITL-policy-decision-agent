@@ -19,7 +19,6 @@ from agent.risk.taxonomy import match_signals
 from agent.state import RISK_HIGH, RISK_LOW, RISK_MEDIUM
 from config.settings import RiskSettings
 
-
 # --------------------------------------------------------------------------
 # The four required cases
 # --------------------------------------------------------------------------

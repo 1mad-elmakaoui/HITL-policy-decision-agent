@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 import yaml
 
@@ -22,11 +22,11 @@ class MalformedPolicyDocument(ValueError):
     """
 
 
-def parse_documents(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def parse_documents(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [parse_document(record).to_dict() for record in records]
 
 
-def parse_document(record: Dict[str, Any]) -> PolicyDocument:
+def parse_document(record: dict[str, Any]) -> PolicyDocument:
     raw_text = record.get("raw_text", "")
     source = record.get("source", record.get("filename", "unknown"))
 
@@ -68,9 +68,9 @@ def parse_document(record: Dict[str, Any]) -> PolicyDocument:
     return document
 
 
-def _split_sections(body: str) -> List[Dict[str, str]]:
+def _split_sections(body: str) -> list[dict[str, str]]:
     headings = list(_HEADING_RE.finditer(body))
-    sections: List[Dict[str, str]] = []
+    sections: list[dict[str, str]] = []
 
     preamble = body[: headings[0].start()].strip() if headings else body.strip()
     if preamble:
@@ -90,7 +90,7 @@ try:  # pragma: no cover
     from zenml import step
 
     @step(enable_cache=True)
-    def parse_documents_step(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def parse_documents_step(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return parse_documents(records)
 
 except ImportError:  # pragma: no cover

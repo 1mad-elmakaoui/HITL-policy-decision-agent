@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yaml
 
@@ -121,7 +121,7 @@ class Settings:
     def eval_set_full_path(self) -> Path:
         return self.path(self.evaluation.eval_set_path)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         raw = asdict(self)
         raw["run_mode"] = self.run_mode.value
         return raw
@@ -139,7 +139,7 @@ def _coerce(value: Any, target: Any) -> Any:
     return value
 
 
-def _apply_mapping(target: Any, mapping: Dict[str, Any]) -> None:
+def _apply_mapping(target: Any, mapping: dict[str, Any]) -> None:
     for key, value in (mapping or {}).items():
         if not hasattr(target, key):
             continue
@@ -167,7 +167,7 @@ def _apply_environment(settings: Settings) -> None:
                 setattr(group, f.name, _coerce(os.environ[env_key], getattr(group, f.name)))
 
 
-def load_settings(config_file: Optional[Path | str] = None) -> Settings:
+def load_settings(config_file: Path | str | None = None) -> Settings:
     settings = Settings(run_mode=current_run_mode())
 
     path = Path(config_file) if config_file else DEFAULT_CONFIG_FILE

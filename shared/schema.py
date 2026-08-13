@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 #: Metadata keys every indexed chunk is required to carry. Verification and
 #: indexing both enforce this list, so a chunk can never reach the runtime
@@ -42,15 +42,15 @@ class ChunkMetadata:
     ingested_at: str = ""
     content_hash: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, raw: Dict[str, Any]) -> "ChunkMetadata":
+    def from_dict(cls, raw: dict[str, Any]) -> ChunkMetadata:
         known = {f: raw.get(f, "") for f in cls.__dataclass_fields__}
         return cls(**known)
 
-    def missing_fields(self) -> List[str]:
+    def missing_fields(self) -> list[str]:
         return [f for f in REQUIRED_METADATA_FIELDS if not getattr(self, f, "")]
 
 
@@ -65,11 +65,11 @@ class PolicyChunk:
     def chunk_id(self) -> str:
         return self.metadata.chunk_id
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {"text": self.text, "metadata": self.metadata.to_dict()}
 
     @classmethod
-    def from_dict(cls, raw: Dict[str, Any]) -> "PolicyChunk":
+    def from_dict(cls, raw: dict[str, Any]) -> PolicyChunk:
         return cls(text=raw["text"], metadata=ChunkMetadata.from_dict(raw["metadata"]))
 
     def citation(self) -> str:
@@ -93,7 +93,7 @@ class RetrievedChunk:
     score: float
     rank: int
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "text": self.chunk.text,
             "metadata": self.chunk.metadata.to_dict(),
@@ -103,7 +103,7 @@ class RetrievedChunk:
         }
 
     @classmethod
-    def from_dict(cls, raw: Dict[str, Any]) -> "RetrievedChunk":
+    def from_dict(cls, raw: dict[str, Any]) -> RetrievedChunk:
         return cls(
             chunk=PolicyChunk.from_dict(raw),
             score=float(raw.get("score", 0.0)),
@@ -121,14 +121,14 @@ class PolicyDocument:
     source: str
     effective_date: str = ""
     owner: str = ""
-    sections: List[Dict[str, str]] = field(default_factory=list)
+    sections: list[dict[str, str]] = field(default_factory=list)
     raw_text: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, raw: Dict[str, Any]) -> "PolicyDocument":
+    def from_dict(cls, raw: dict[str, Any]) -> PolicyDocument:
         known = {f: raw[f] for f in cls.__dataclass_fields__ if f in raw}
         return cls(**known)
 
@@ -150,5 +150,5 @@ def make_chunk_id(document_id: str, document_version: str, section: str, ordinal
     return f"{document_id}@{document_version}#{ordinal:03d}-{slug}"
 
 
-def optional_str(value: Optional[Any]) -> str:
+def optional_str(value: Any | None) -> str:
     return "" if value is None else str(value)

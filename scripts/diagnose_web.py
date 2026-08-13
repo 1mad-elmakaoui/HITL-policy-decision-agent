@@ -101,7 +101,7 @@ try:
         data = status.json()
         print(f"   run mode              : {data['run_mode']}")
         index = data.get("index")
-        print(f"   index                 : "
+        print("   index                 : "
               + (f"{index['chunk_count']} chunks" if index else f"UNAVAILABLE - {data.get('index_error')}"))
 except Exception as exc:  # noqa: BLE001
     print(f"   could not call the app in-process: {exc}")

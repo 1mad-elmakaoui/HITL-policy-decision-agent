@@ -27,7 +27,8 @@ preliminary assessment for the reviewer to evaluate.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
@@ -113,11 +114,11 @@ def build_policy_review_graph(
 
 def compile_policy_review_graph(
     checkpointer: BaseCheckpointSaver,
-    settings: Optional[Settings] = None,
-    retriever: Optional[PolicyRetriever] = None,
-    classifier: Optional[RiskClassifier] = None,
-    llm: Optional[LLMClient] = None,
-    log: Optional[EventLog] = None,
+    settings: Settings | None = None,
+    retriever: PolicyRetriever | None = None,
+    classifier: RiskClassifier | None = None,
+    llm: LLMClient | None = None,
+    log: EventLog | None = None,
 ) -> Any:
     """Build and compile the graph against a checkpointer.
 

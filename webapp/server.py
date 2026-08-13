@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
@@ -93,12 +93,12 @@ file is read on every request.</p>
 
 
 @app.get("/api/status")
-def status() -> Dict[str, Any]:
+def status() -> dict[str, Any]:
     """Run mode and index health, shown in the header."""
     settings = load_settings()
     key_present = bool(os.environ.get("ANTHROPIC_API_KEY"))
 
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "run_mode": settings.run_mode.value,
         "llm_provider": settings.llm_provider,
         "llm_model": settings.llm_model if settings.llm_provider != "mock" else "deterministic mock",
@@ -123,7 +123,7 @@ def status() -> Dict[str, Any]:
 
 
 @app.get("/api/samples")
-def samples() -> List[Dict[str, str]]:
+def samples() -> list[dict[str, str]]:
     """Questions for the demo, chosen to show both paths."""
     return [
         {"label": "Annual leave carry-over", "risk": "low",
@@ -144,7 +144,7 @@ def samples() -> List[Dict[str, str]]:
 
 
 @app.post("/api/submit")
-def submit(request: SubmitRequest) -> Dict[str, Any]:
+def submit(request: SubmitRequest) -> dict[str, Any]:
     if not request.question.strip():
         raise HTTPException(status_code=400, detail="A question is required.")
     result = service().submit(
@@ -156,7 +156,7 @@ def submit(request: SubmitRequest) -> Dict[str, Any]:
 
 
 @app.post("/api/resume")
-def resume(request: ResumeRequest) -> Dict[str, Any]:
+def resume(request: ResumeRequest) -> dict[str, Any]:
     try:
         result = service().resume(
             request.thread_id,
@@ -176,7 +176,7 @@ def resume(request: ResumeRequest) -> Dict[str, Any]:
 
 
 @app.get("/api/pending/{thread_id}")
-def pending(thread_id: str) -> Dict[str, Any]:
+def pending(thread_id: str) -> dict[str, Any]:
     try:
         payload = service().pending_review(thread_id)
     except UnknownThread as exc:
@@ -185,7 +185,7 @@ def pending(thread_id: str) -> Dict[str, Any]:
 
 
 @app.get("/api/trace/{thread_id}")
-def trace(thread_id: str) -> Dict[str, Any]:
+def trace(thread_id: str) -> dict[str, Any]:
     return {"thread_id": thread_id, "events": service().history(thread_id)}
 
 

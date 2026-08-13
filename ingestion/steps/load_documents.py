@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import datetime as _dt
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 SUPPORTED_SUFFIXES = {".md", ".markdown", ".txt"}
 
 
-def load_documents(corpus_dir: str) -> List[Dict[str, Any]]:
+def load_documents(corpus_dir: str) -> list[dict[str, Any]]:
     """Read every supported document under ``corpus_dir``.
 
     Returns raw records -- text plus file-level provenance -- with no parsing of
@@ -21,7 +21,7 @@ def load_documents(corpus_dir: str) -> List[Dict[str, Any]]:
     if not root.exists():
         raise FileNotFoundError(f"Policy corpus directory not found: {root}")
 
-    records: List[Dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
     for path in sorted(root.rglob("*")):
         if not path.is_file() or path.suffix.lower() not in SUPPORTED_SUFFIXES:
             continue
@@ -51,7 +51,7 @@ try:  # pragma: no cover - the decorated form is exercised by the ZenML test
     from zenml import step
 
     @step(enable_cache=True)
-    def load_documents_step(corpus_dir: str) -> List[Dict[str, Any]]:
+    def load_documents_step(corpus_dir: str) -> list[dict[str, Any]]:
         """ZenML step wrapper. Caching is enabled: an unchanged corpus does not
         need re-reading, which is what makes a re-run cheap after a policy edit
         touches only one document."""

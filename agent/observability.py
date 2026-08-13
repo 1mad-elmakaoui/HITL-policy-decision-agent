@@ -20,8 +20,9 @@ import datetime as _dt
 import json
 import os
 import threading
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from langgraph.errors import GraphBubbleUp
 
@@ -31,11 +32,11 @@ _LOCK = threading.Lock()
 class EventLog:
     """Append-only JSONL event log."""
 
-    def __init__(self, path: Optional[Path], enabled: bool = True) -> None:
+    def __init__(self, path: Path | None, enabled: bool = True) -> None:
         self._path = Path(path) if path else None
         self._enabled = enabled and self._path is not None
 
-    def emit(self, event: str, thread_id: str, **fields: Any) -> Dict[str, Any]:
+    def emit(self, event: str, thread_id: str, **fields: Any) -> dict[str, Any]:
         record = {
             "ts": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="milliseconds"),
             "event": event,
@@ -50,11 +51,11 @@ class EventLog:
                     handle.write(json.dumps(record, default=str) + "\n")
         return record
 
-    def read(self, thread_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def read(self, thread_id: str | None = None) -> list[dict[str, Any]]:
         """Read events back, optionally for a single thread."""
         if self._path is None or not self._path.exists():
             return []
-        events: List[Dict[str, Any]] = []
+        events: list[dict[str, Any]] = []
         with self._path.open("r", encoding="utf-8") as handle:
             for line in handle:
                 line = line.strip()
@@ -80,8 +81,8 @@ def traced_node(name: str, log_factory: Callable[[], EventLog] = lambda: _NULL_L
     the log can be rotated away, the checkpoint cannot.
     """
 
-    def decorator(fn: Callable[..., Dict[str, Any]]) -> Callable[..., Dict[str, Any]]:
-        def wrapper(state: Dict[str, Any], *args: Any, **kwargs: Any) -> Dict[str, Any]:
+    def decorator(fn: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
+        def wrapper(state: dict[str, Any], *args: Any, **kwargs: Any) -> dict[str, Any]:
             log = log_factory()
             thread_id = str(state.get("request_id", ""))
             log.emit("node.start", thread_id, node=name)
@@ -127,8 +128,8 @@ _TRACED_FIELDS = (
 )
 
 
-def _summarize(update: Dict[str, Any]) -> Dict[str, Any]:
-    summary: Dict[str, Any] = {k: update[k] for k in _TRACED_FIELDS if k in update}
+def _summarize(update: dict[str, Any]) -> dict[str, Any]:
+    summary: dict[str, Any] = {k: update[k] for k in _TRACED_FIELDS if k in update}
     if "policy_passages" in update:
         passages = update.get("policy_passages") or []
         # Chunk ids and scores, not chunk text: enough to re-fetch the exact
@@ -148,5 +149,5 @@ def _summarize(update: Dict[str, Any]) -> Dict[str, Any]:
     return summary
 
 
-def build_event_log(path: Optional[Path], enabled: bool = True) -> EventLog:
+def build_event_log(path: Path | None, enabled: bool = True) -> EventLog:
     return EventLog(path, enabled=enabled)

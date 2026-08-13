@@ -12,7 +12,8 @@ inference the model made inside a longer prompt.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 from agent.observability import EventLog, traced_node
 from agent.risk.classifier import RiskClassifier
@@ -23,15 +24,15 @@ NODE_NAME = "classify_risk"
 
 def make_classify_risk_node(
     classifier: RiskClassifier, log_factory: Callable[[], EventLog]
-) -> Callable[[PolicyReviewState], Dict[str, Any]]:
+) -> Callable[[PolicyReviewState], dict[str, Any]]:
     @traced_node(NODE_NAME, log_factory)
-    def classify_risk(state: PolicyReviewState) -> Dict[str, Any]:
+    def classify_risk(state: PolicyReviewState) -> dict[str, Any]:
         assessment = classifier.classify(
             state.get("question", ""), state.get("policy_passages") or []
         )
 
         review_required = assessment.requires_human_review or bool(state.get("force_human_review"))
-        update: Dict[str, Any] = {
+        update: dict[str, Any] = {
             "risk_level": assessment.level,
             "risk_reason": assessment.reason,
             "risk_signals": assessment.signals,

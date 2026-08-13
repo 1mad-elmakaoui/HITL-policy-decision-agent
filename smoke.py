@@ -1,8 +1,11 @@
 """Step 1 smoke test: prove the contract layer before building on it."""
-import subprocess, sys, tempfile
+import subprocess
+import sys
+import tempfile
+
 from config.settings import load_settings
-from shared.embeddings import build_embedder, fit_embedder
-from shared.schema import PolicyChunk, ChunkMetadata, make_chunk_id
+from shared.embeddings import fit_embedder
+from shared.schema import ChunkMetadata, PolicyChunk, make_chunk_id
 from shared.vector_store import build_vector_store
 
 # 1. Schema round-trips, chunk_id is deterministic

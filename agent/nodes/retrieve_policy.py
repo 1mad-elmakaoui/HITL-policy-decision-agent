@@ -7,7 +7,8 @@ what lets retrieval be evaluated on its own without building a graph.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 from agent.observability import EventLog, traced_node
 from agent.retrieval.retriever import PolicyRetriever
@@ -18,9 +19,9 @@ NODE_NAME = "retrieve_policy"
 
 def make_retrieve_policy_node(
     retriever: PolicyRetriever, log_factory: Callable[[], EventLog]
-) -> Callable[[PolicyReviewState], Dict[str, Any]]:
+) -> Callable[[PolicyReviewState], dict[str, Any]]:
     @traced_node(NODE_NAME, log_factory)
-    def retrieve_policy(state: PolicyReviewState) -> Dict[str, Any]:
+    def retrieve_policy(state: PolicyReviewState) -> dict[str, Any]:
         result = retriever.retrieve(state.get("question", ""))
 
         if not result.ok:

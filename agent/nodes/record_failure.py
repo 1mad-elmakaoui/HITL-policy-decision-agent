@@ -14,7 +14,8 @@ back automatically for a consequential action.
 from __future__ import annotations
 
 import datetime as _dt
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 from agent.observability import EventLog, traced_node
 from agent.state import STATUS_FAILED, PolicyReviewState
@@ -24,9 +25,9 @@ NODE_NAME = "record_failure"
 
 def make_record_failure_node(
     log_factory: Callable[[], EventLog],
-) -> Callable[[PolicyReviewState], Dict[str, Any]]:
+) -> Callable[[PolicyReviewState], dict[str, Any]]:
     @traced_node(NODE_NAME, log_factory)
-    def record_failure(state: PolicyReviewState) -> Dict[str, Any]:
+    def record_failure(state: PolicyReviewState) -> dict[str, Any]:
         reason = state.get("retrieval_error") or "the request could not be processed"
 
         log_factory().emit(

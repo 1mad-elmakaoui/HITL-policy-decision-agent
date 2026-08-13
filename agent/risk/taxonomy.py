@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import List, Tuple
 
 from agent.state import RISK_HIGH, RISK_LOW, RISK_MEDIUM
 
@@ -21,7 +20,7 @@ class RiskSignal:
     name: str
     level: str
     rationale: str
-    patterns: Tuple[str, ...]
+    patterns: tuple[str, ...]
 
     def matches(self, text: str) -> bool:
         return any(re.search(p, text, flags=re.IGNORECASE) for p in self.patterns)
@@ -30,7 +29,7 @@ class RiskSignal:
 # Consequential employment actions. These are the cases the specification names
 # explicitly (termination, demotion, disciplinary action) plus the actions that
 # carry the same employment consequence under the corpus's own policies.
-HIGH_RISK_SIGNALS: Tuple[RiskSignal, ...] = (
+HIGH_RISK_SIGNALS: tuple[RiskSignal, ...] = (
     RiskSignal(
         name="termination",
         level=RISK_HIGH,
@@ -143,7 +142,7 @@ HIGH_RISK_SIGNALS: Tuple[RiskSignal, ...] = (
 # Actions with real consequence that nonetheless sit below the human-review gate
 # on their own. They raise the level to medium, which is recorded and visible but
 # does not by itself interrupt.
-MEDIUM_RISK_SIGNALS: Tuple[RiskSignal, ...] = (
+MEDIUM_RISK_SIGNALS: tuple[RiskSignal, ...] = (
     RiskSignal(
         name="access_revocation",
         level=RISK_MEDIUM,
@@ -179,16 +178,16 @@ MEDIUM_RISK_SIGNALS: Tuple[RiskSignal, ...] = (
     ),
 )
 
-ALL_SIGNALS: Tuple[RiskSignal, ...] = HIGH_RISK_SIGNALS + MEDIUM_RISK_SIGNALS
+ALL_SIGNALS: tuple[RiskSignal, ...] = HIGH_RISK_SIGNALS + MEDIUM_RISK_SIGNALS
 
 
-def match_signals(text: str) -> List[RiskSignal]:
+def match_signals(text: str) -> list[RiskSignal]:
     """Every signal whose pattern appears in ``text``, high-risk first."""
     matched = [signal for signal in ALL_SIGNALS if signal.matches(text)]
     return sorted(matched, key=lambda s: 0 if s.level == RISK_HIGH else 1)
 
 
-def baseline_level(matched: List[RiskSignal]) -> str:
+def baseline_level(matched: list[RiskSignal]) -> str:
     if any(s.level == RISK_HIGH for s in matched):
         return RISK_HIGH
     if any(s.level == RISK_MEDIUM for s in matched):

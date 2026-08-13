@@ -19,7 +19,7 @@ or embedder changed -- not the index's mood.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import yaml
 
@@ -38,8 +38,8 @@ class RetrievalQualityGate(RuntimeError):
 
 
 def evaluate_retrieval(
-    chunks: List[Dict[str, Any]],
-    vectors: List[List[float]],
+    chunks: list[dict[str, Any]],
+    vectors: list[list[float]],
     eval_set_path: str,
     provider: str = "hashing",
     model_name: str = "",
@@ -51,8 +51,8 @@ def evaluate_retrieval(
     weak_evidence_score: float = 0.55,
     strong_evidence_score: float = 1.00,
     fail_below_threshold: bool = True,
-    embedder_state: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    embedder_state: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     eval_set = _load_eval_set(eval_set_path)
     k = int(eval_set.get("k", k))
 
@@ -69,7 +69,7 @@ def evaluate_retrieval(
     )
     store.upsert(parsed, vectors)
 
-    per_query: List[Dict[str, Any]] = []
+    per_query: list[dict[str, Any]] = []
     for query in eval_set.get("queries", []):
         relevant_ids = _resolve_labels(parsed, query.get("relevant") or [])
         retrieved = store.query(embedder.embed_query(query["question"]), k=k)
@@ -93,7 +93,7 @@ def evaluate_retrieval(
         component, calibration, k, min_recall_at_k, min_mrr, min_ndcg_at_k, strong_evidence_score
     )
 
-    report: Dict[str, Any] = {
+    report: dict[str, Any] = {
         "k": k,
         "module_level": module,
         "component_level": component,
@@ -118,8 +118,8 @@ def evaluate_retrieval(
 
 
 def _calibration(
-    per_query: List[Dict[str, Any]], weak_evidence_score: float, strong_evidence_score: float
-) -> Dict[str, Any]:
+    per_query: list[dict[str, Any]], weak_evidence_score: float, strong_evidence_score: float
+) -> dict[str, Any]:
     """Check the runtime's evidence thresholds against measured scores.
 
     The evidence grade is an absolute threshold on the retrieval score, so it is
@@ -139,7 +139,7 @@ def _calibration(
     positives = [float(q["top_score"]) for q in per_query if q.get("relevant_ids")]
     negatives = [float(q["top_score"]) for q in per_query if not q.get("relevant_ids")]
 
-    calibration: Dict[str, Any] = {
+    calibration: dict[str, Any] = {
         "weak_evidence_score": weak_evidence_score,
         "strong_evidence_score": strong_evidence_score,
         "positive_min_top_score": min(positives) if positives else 0.0,
@@ -159,15 +159,15 @@ def _calibration(
 
 
 def _check_thresholds(
-    component: Dict[str, float],
-    calibration: Dict[str, Any],
+    component: dict[str, float],
+    calibration: dict[str, Any],
     k: int,
     min_recall: float,
     min_mrr: float,
     min_ndcg: float,
     strong_evidence_score: float,
-) -> List[str]:
-    failures: List[str] = []
+) -> list[str]:
+    failures: list[str] = []
 
     # --- ranking quality (RAGOps Table 1, component level) ------------------
     for metric, floor in ((f"recall_at_{k}", min_recall), ("mrr", min_mrr), (f"ndcg_at_{k}", min_ndcg)):
@@ -191,7 +191,7 @@ def _check_thresholds(
     return failures
 
 
-def _module_metrics(chunks: List[PolicyChunk], vectors: List[List[float]]) -> Dict[str, Any]:
+def _module_metrics(chunks: list[PolicyChunk], vectors: list[list[float]]) -> dict[str, Any]:
     sizes = [len(c.text) for c in chunks]
     return {
         "chunks": len(chunks),
@@ -205,9 +205,9 @@ def _module_metrics(chunks: List[PolicyChunk], vectors: List[List[float]]) -> Di
     }
 
 
-def _resolve_labels(chunks: List[PolicyChunk], labels: List[Dict[str, str]]) -> List[str]:
+def _resolve_labels(chunks: list[PolicyChunk], labels: list[dict[str, str]]) -> list[str]:
     """Map (document_id, section_contains) labels onto current chunk ids."""
-    resolved: List[str] = []
+    resolved: list[str] = []
     for label in labels:
         document_id = label.get("document_id", "")
         needle = label.get("section_contains", "").lower()
@@ -225,7 +225,7 @@ def _resolve_labels(chunks: List[PolicyChunk], labels: List[Dict[str, str]]) -> 
     return sorted(set(resolved))
 
 
-def _load_eval_set(path: str) -> Dict[str, Any]:
+def _load_eval_set(path: str) -> dict[str, Any]:
     file = Path(path)
     if not file.exists():
         raise FileNotFoundError(f"Retrieval evaluation set not found: {file}")
@@ -237,8 +237,8 @@ try:  # pragma: no cover
 
     @step(enable_cache=False)
     def evaluate_retrieval_step(
-        chunks: List[Dict[str, Any]],
-        vectors: List[List[float]],
+        chunks: list[dict[str, Any]],
+        vectors: list[list[float]],
         eval_set_path: str,
         provider: str = "hashing",
         model_name: str = "",
@@ -250,8 +250,8 @@ try:  # pragma: no cover
         weak_evidence_score: float = 0.55,
         strong_evidence_score: float = 1.00,
         fail_below_threshold: bool = True,
-        embedder_state: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        embedder_state: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         return evaluate_retrieval(
             chunks=chunks,
             vectors=vectors,

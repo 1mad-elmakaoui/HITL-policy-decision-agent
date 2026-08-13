@@ -18,7 +18,7 @@ without an orchestrator (see ``tests/ingestion/``).
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from zenml import pipeline
 
@@ -104,8 +104,8 @@ def policy_ingestion_pipeline(
 
 
 def run_policy_ingestion(
-    settings: Optional[Settings] = None, strict_verification: bool = True
-) -> Dict[str, Any]:
+    settings: Settings | None = None, strict_verification: bool = True
+) -> dict[str, Any]:
     """Run the pipeline with the project's configuration."""
     settings = settings or load_settings()
     settings.vector_store_path.mkdir(parents=True, exist_ok=True)

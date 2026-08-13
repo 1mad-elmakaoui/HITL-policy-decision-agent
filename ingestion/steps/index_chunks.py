@@ -8,7 +8,7 @@ writes to it.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from shared.embeddings import build_embedder, coerce_embedder_state, save_embedder_state
 from shared.schema import PolicyChunk
@@ -16,15 +16,15 @@ from shared.vector_store import build_vector_store
 
 
 def index_chunks(
-    chunks: List[Dict[str, Any]],
-    vectors: List[List[float]],
+    chunks: list[dict[str, Any]],
+    vectors: list[list[float]],
     backend: str = "chroma",
     persist_directory: str = ".policy_index",
     collection: str = "policy_chunks",
     embedding_model: str = "",
-    embedder_state: Optional[Dict[str, Any]] = None,
+    embedder_state: dict[str, Any] | None = None,
     reconcile: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     parsed = [PolicyChunk.from_dict(raw) for raw in chunks]
     dimension = len(vectors[0]) if vectors else 0
     state = coerce_embedder_state(embedder_state)
@@ -73,14 +73,14 @@ try:  # pragma: no cover
 
     @step(enable_cache=False)
     def index_chunks_step(
-        chunks: List[Dict[str, Any]],
-        vectors: List[List[float]],
+        chunks: list[dict[str, Any]],
+        vectors: list[list[float]],
         backend: str = "chroma",
         persist_directory: str = ".policy_index",
         collection: str = "policy_chunks",
         embedding_model: str = "",
-        embedder_state: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        embedder_state: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Caching is disabled here on purpose: this step has a side effect
         outside the ZenML artifact store, so a cache hit would report success
         while leaving the actual index untouched."""

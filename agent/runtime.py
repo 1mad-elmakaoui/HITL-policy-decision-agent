@@ -13,8 +13,9 @@ them is the ``thread_id`` and the checkpoint database.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any
 
 from langgraph.types import Command
 
@@ -49,19 +50,19 @@ class PolicyReviewResult:
     thread_id: str
     status: str
     final_answer: str = ""
-    interrupt_payload: Optional[Dict[str, Any]] = None
+    interrupt_payload: dict[str, Any] | None = None
     risk_level: str = ""
     risk_reason: str = ""
     evidence_grade: str = ""
-    decision_record: Dict[str, Any] = field(default_factory=dict)
-    route_history: List[str] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
+    decision_record: dict[str, Any] = field(default_factory=dict)
+    route_history: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
     @property
     def awaiting_human_review(self) -> bool:
         return self.interrupt_payload is not None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "thread_id": self.thread_id,
             "status": self.status,
@@ -82,11 +83,11 @@ class PolicyReviewService:
 
     def __init__(
         self,
-        settings: Optional[Settings] = None,
-        retriever: Optional[PolicyRetriever] = None,
-        classifier: Optional[RiskClassifier] = None,
-        llm: Optional[LLMClient] = None,
-        log: Optional[EventLog] = None,
+        settings: Settings | None = None,
+        retriever: PolicyRetriever | None = None,
+        classifier: RiskClassifier | None = None,
+        llm: LLMClient | None = None,
+        log: EventLog | None = None,
     ) -> None:
         self._settings = settings or load_settings()
         self._retriever = retriever
@@ -98,7 +99,7 @@ class PolicyReviewService:
     def submit(
         self,
         question: str,
-        request_id: Optional[str] = None,
+        request_id: str | None = None,
         requested_by: str = "",
         force_human_review: bool = False,
     ) -> PolicyReviewResult:
@@ -126,7 +127,7 @@ class PolicyReviewService:
             return self._result(thread_id, output, graph, config)
 
     # ---------------------------------------------------------------- resume
-    def resume(self, thread_id: str, reviewer_input: Dict[str, Any]) -> PolicyReviewResult:
+    def resume(self, thread_id: str, reviewer_input: dict[str, Any]) -> PolicyReviewResult:
         """Resume a parked request with the reviewer's decision.
 
         Requires nothing from the submitting process: the graph is rebuilt here
@@ -178,7 +179,7 @@ class PolicyReviewService:
                 raise UnknownThread(f"no checkpoint found for thread_id {thread_id!r}")
             return snapshot.values
 
-    def pending_review(self, thread_id: str) -> Optional[Dict[str, Any]]:
+    def pending_review(self, thread_id: str) -> dict[str, Any] | None:
         """The interrupt payload for a parked thread, or ``None``.
 
         This is what an operator UI or queue consumer polls. It reads the
@@ -191,7 +192,7 @@ class PolicyReviewService:
                 raise UnknownThread(f"no checkpoint found for thread_id {thread_id!r}")
             return _interrupt_payload_from_snapshot(snapshot)
 
-    def history(self, thread_id: str) -> List[Dict[str, Any]]:
+    def history(self, thread_id: str) -> list[dict[str, Any]]:
         """Observability events recorded for this thread."""
         return self._log.read(thread_id)
 
@@ -213,7 +214,7 @@ class PolicyReviewService:
         )
 
     def _result(
-        self, thread_id: str, output: Dict[str, Any], graph: Any, config: Dict[str, Any]
+        self, thread_id: str, output: dict[str, Any], graph: Any, config: dict[str, Any]
     ) -> PolicyReviewResult:
         payload = _interrupt_payload_from_output(output)
         if payload is None:
@@ -235,7 +236,7 @@ class PolicyReviewService:
         )
 
 
-def _interrupt_payload_from_output(output: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _interrupt_payload_from_output(output: dict[str, Any]) -> dict[str, Any] | None:
     """Extract the interrupt payload from an ``invoke`` return value."""
     interrupts = output.get("__interrupt__") if isinstance(output, dict) else None
     if not interrupts:
@@ -245,7 +246,7 @@ def _interrupt_payload_from_output(output: Dict[str, Any]) -> Optional[Dict[str,
     return value if isinstance(value, dict) else {"value": value}
 
 
-def _interrupt_payload_from_snapshot(snapshot: Any) -> Optional[Dict[str, Any]]:
+def _interrupt_payload_from_snapshot(snapshot: Any) -> dict[str, Any] | None:
     """Extract the pending interrupt payload from a state snapshot.
 
     Read from the checkpoint rather than from an invocation result, so a

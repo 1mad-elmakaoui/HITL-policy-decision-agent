@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 import math
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol, Sequence, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 #: Filename of the fitted embedder state, written into the index directory by the
 #: ingestion pipeline and read by the runtime retriever.
@@ -37,12 +38,12 @@ class EmbeddingModel(Protocol):
     dimension: int
     similarity: str
 
-    def embed_documents(self, texts: Sequence[str]) -> List[List[float]]: ...
+    def embed_documents(self, texts: Sequence[str]) -> list[list[float]]: ...
 
-    def embed_query(self, text: str) -> List[float]: ...
+    def embed_query(self, text: str) -> list[float]: ...
 
 
-def _tokenize(text: str) -> List[str]:
+def _tokenize(text: str) -> list[str]:
     return [t for t in _TOKEN_RE.findall(text.lower()) if t not in _STOPWORDS and len(t) > 1]
 
 
@@ -62,9 +63,9 @@ class EmbedderState:
     dimension: int
     n_documents: int = 0
     average_length: float = 0.0
-    document_frequencies: Dict[str, int] = field(default_factory=dict)
+    document_frequencies: dict[str, int] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "provider": self.provider,
             "dimension": self.dimension,
@@ -74,7 +75,7 @@ class EmbedderState:
         }
 
     @classmethod
-    def from_dict(cls, raw: Dict[str, Any]) -> "EmbedderState":
+    def from_dict(cls, raw: dict[str, Any]) -> EmbedderState:
         return cls(
             provider=str(raw.get("provider", "hashing")),
             dimension=int(raw.get("dimension", 2048)),
@@ -122,16 +123,16 @@ class HashingBM25Embedder:
 
     similarity = SIMILARITY_INNER_PRODUCT
 
-    def __init__(self, dimension: int = 16384, state: Optional[EmbedderState] = None) -> None:
+    def __init__(self, dimension: int = 16384, state: EmbedderState | None = None) -> None:
         self.dimension = state.dimension if state else dimension
         self._state = state or EmbedderState(provider="hashing", dimension=self.dimension)
         self.name = f"hashing-bm25-{self.dimension}" + ("" if self._state.fitted else "-unfitted")
 
     # ------------------------------------------------------------------ fit
-    def fit(self, texts: Sequence[str]) -> "HashingBM25Embedder":
+    def fit(self, texts: Sequence[str]) -> HashingBM25Embedder:
         """Compute document frequencies and mean document length."""
-        frequencies: Dict[str, int] = {}
-        lengths: List[int] = []
+        frequencies: dict[str, int] = {}
+        lengths: list[int] = []
         for text in texts:
             indices = self._indices(text)
             lengths.append(len(indices))
@@ -157,7 +158,7 @@ class HashingBM25Embedder:
         return self._state.fitted
 
     # -------------------------------------------------------------- encoding
-    def _indices(self, text: str) -> List[int]:
+    def _indices(self, text: str) -> list[int]:
         tokens = [_stem(t) for t in _tokenize(text)]
         indices = [hash_to_index(t, self.dimension) for t in tokens]
         indices += [
@@ -175,16 +176,16 @@ class HashingBM25Embedder:
         # every document contributes ~0 rather than a negative score.
         return math.log(1.0 + (total - df + 0.5) / (df + 0.5))
 
-    def embed_documents(self, texts: Sequence[str]) -> List[List[float]]:
+    def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
         return [self._document_vector(t) for t in texts]
 
-    def _document_vector(self, text: str) -> List[float]:
+    def _document_vector(self, text: str) -> list[float]:
         """BM25 document-side weights, including length normalisation."""
         indices = self._indices(text)
         if not indices:
             return [0.0] * self.dimension
 
-        counts: Dict[int, float] = {}
+        counts: dict[int, float] = {}
         for index in indices:
             counts[index] = counts.get(index, 0.0) + 1.0
 
@@ -196,7 +197,7 @@ class HashingBM25Embedder:
             vector[index] = self._idf(index) * (tf * (self.K1 + 1.0)) / (tf + norm)
         return vector
 
-    def embed_query(self, text: str) -> List[float]:
+    def embed_query(self, text: str) -> list[float]:
         """Query-side indicator vector, normalised by query length.
 
         Binary rather than term-frequency weighted: a term the user happened to
@@ -241,10 +242,10 @@ class SentenceTransformerEmbedder:
         self.name = model_name
         self.dimension = int(self._model.get_sentence_embedding_dimension())
 
-    def embed_documents(self, texts: Sequence[str]) -> List[List[float]]:
+    def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
         return [list(map(float, v)) for v in self._model.encode(list(texts), normalize_embeddings=True)]
 
-    def embed_query(self, text: str) -> List[float]:
+    def embed_query(self, text: str) -> list[float]:
         return list(map(float, self._model.encode([text], normalize_embeddings=True)[0]))
 
 
@@ -279,7 +280,7 @@ def build_embedder(
     provider: str,
     model_name: str = "",
     dimension: int = 16384,
-    state: Optional[EmbedderState] = None,
+    state: EmbedderState | None = None,
 ) -> EmbeddingModel:
     """Factory used by both the ingestion pipeline and the runtime retriever.
 
@@ -310,12 +311,12 @@ def fit_embedder(
     return embedder
 
 
-def embedder_state_of(embedder: EmbeddingModel) -> Optional[EmbedderState]:
+def embedder_state_of(embedder: EmbeddingModel) -> EmbedderState | None:
     state = getattr(embedder, "state", None)
     return state if isinstance(state, EmbedderState) else None
 
 
-def coerce_embedder_state(raw: Optional[Dict[str, Any]]) -> Optional[EmbedderState]:
+def coerce_embedder_state(raw: dict[str, Any] | None) -> EmbedderState | None:
     """Normalise whatever the embed step handed downstream into a state object.
 
     Inside a ZenML pipeline a step's outputs are passed as artifact references,
@@ -332,7 +333,7 @@ def coerce_embedder_state(raw: Optional[Dict[str, Any]]) -> Optional[EmbedderSta
     return EmbedderState.from_dict(nested) if nested else None
 
 
-def save_embedder_state(directory: Path | str, state: Optional[EmbedderState]) -> Optional[Path]:
+def save_embedder_state(directory: Path | str, state: EmbedderState | None) -> Path | None:
     """Publish fitted state into the index directory."""
     if state is None:
         return None
@@ -342,7 +343,7 @@ def save_embedder_state(directory: Path | str, state: Optional[EmbedderState]) -
     return path
 
 
-def load_embedder_state(directory: Path | str) -> Optional[EmbedderState]:
+def load_embedder_state(directory: Path | str) -> EmbedderState | None:
     """Load fitted state published beside an index, if any."""
     path = Path(directory) / EMBEDDER_STATE_FILENAME
     if not path.exists():

@@ -16,7 +16,8 @@ failure is correct pathway behavior, not a system crash".
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
+from typing import Any
 
 from agent.llm.client import LLMClient, LLMError
 from agent.llm.prompts import POLICY_ASSESSMENT_SYSTEM, render_policy_assessment_prompt
@@ -40,10 +41,10 @@ RETRIEVAL_FAILED_ANSWER = (
 
 def make_draft_assessment_node(
     llm: LLMClient, log_factory: Callable[[], EventLog]
-) -> Callable[[PolicyReviewState], Dict[str, Any]]:
+) -> Callable[[PolicyReviewState], dict[str, Any]]:
     @traced_node(NODE_NAME, log_factory)
-    def draft_assessment(state: PolicyReviewState) -> Dict[str, Any]:
-        passages: List[Dict[str, Any]] = list(state.get("policy_passages") or [])
+    def draft_assessment(state: PolicyReviewState) -> dict[str, Any]:
+        passages: list[dict[str, Any]] = list(state.get("policy_passages") or [])
         grade = state.get("evidence_grade", EVIDENCE_NONE)
 
         if state.get("retrieval_error"):
@@ -102,7 +103,7 @@ def _prefix(permitted: str, answer: str) -> str:
     return f"{lead} {answer}".strip()
 
 
-def _insufficient(answer: str, reason: str) -> Dict[str, Any]:
+def _insufficient(answer: str, reason: str) -> dict[str, Any]:
     return {
         "draft_answer": answer,
         "draft_basis": [],
@@ -112,7 +113,7 @@ def _insufficient(answer: str, reason: str) -> Dict[str, Any]:
     }
 
 
-def _parse(raw: str) -> Dict[str, Any]:
+def _parse(raw: str) -> dict[str, Any]:
     text = (raw or "").strip()
     start, end = text.find("{"), text.rfind("}")
     if start == -1 or end <= start:

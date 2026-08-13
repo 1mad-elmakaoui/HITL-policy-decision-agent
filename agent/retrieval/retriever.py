@@ -13,7 +13,7 @@ independently of the final answer.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from agent.state import EVIDENCE_NONE, EVIDENCE_STRONG, EVIDENCE_WEAK
 from config.settings import RetrievalSettings, Settings
@@ -26,12 +26,12 @@ from shared.vector_store import PolicyVectorStore, VectorStoreUnavailable, build
 class RetrievalResult:
     """Retrieved evidence plus the grade that will drive routing."""
 
-    passages: List[RetrievedChunk]
+    passages: list[RetrievedChunk]
     evidence_grade: str
     top_score: float
     error: str = ""
 
-    def to_state_passages(self) -> List[Dict[str, Any]]:
+    def to_state_passages(self) -> list[dict[str, Any]]:
         return [p.to_dict() for p in self.passages]
 
     @property
@@ -46,14 +46,14 @@ class PolicyRetriever:
         self,
         store: PolicyVectorStore,
         embedder: EmbeddingModel,
-        settings: Optional[RetrievalSettings] = None,
+        settings: RetrievalSettings | None = None,
     ) -> None:
         self._store = store
         self._embedder = embedder
         self._settings = settings or RetrievalSettings()
 
     @classmethod
-    def from_settings(cls, settings: Settings) -> "PolicyRetriever":
+    def from_settings(cls, settings: Settings) -> PolicyRetriever:
         # Load the embedder state the ingestion pipeline published with the
         # index, so queries are embedded in the same space as the chunks. If it
         # is absent the embedder falls back to unweighted term frequency, which
@@ -75,7 +75,7 @@ class PolicyRetriever:
         )
         return cls(store, embedder, settings.retrieval)
 
-    def retrieve(self, question: str, k: Optional[int] = None) -> RetrievalResult:
+    def retrieve(self, question: str, k: int | None = None) -> RetrievalResult:
         """Retrieve evidence for a question.
 
         Store failures are returned as a result carrying an error, not raised:
@@ -98,7 +98,7 @@ class PolicyRetriever:
         top_score = kept[0].score if kept else (passages[0].score if passages else 0.0)
         return RetrievalResult(kept, self.grade(kept), top_score)
 
-    def grade(self, passages: List[RetrievedChunk]) -> str:
+    def grade(self, passages: list[RetrievedChunk]) -> str:
         """Grade evidence quality.
 
         The LangGraph paper's agentic RAG recipe makes evidence quality a state
@@ -116,5 +116,5 @@ class PolicyRetriever:
             return EVIDENCE_STRONG
         return EVIDENCE_WEAK
 
-    def index_stats(self) -> Dict[str, Any]:
+    def index_stats(self) -> dict[str, Any]:
         return self._store.stats().to_dict()

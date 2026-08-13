@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 import datetime as _dt
-from typing import Any, Dict, List
+from typing import Any
 
 from ingestion.chunking.section_chunker import chunk_document
 from shared.schema import REQUIRED_METADATA_FIELDS, PolicyChunk, PolicyDocument
 
 
 def chunk_documents(
-    documents: List[Dict[str, Any]],
+    documents: list[dict[str, Any]],
     max_chunk_chars: int = 1400,
     overlap_chars: int = 160,
     ingested_at: str = "",
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     ingested_at = ingested_at or _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
 
-    chunks: List[PolicyChunk] = []
+    chunks: list[PolicyChunk] = []
     for raw in documents:
         chunks.extend(
             chunk_document(
@@ -33,7 +33,7 @@ def chunk_documents(
     return [chunk.to_dict() for chunk in chunks]
 
 
-def _assert_provenance(chunks: List[PolicyChunk]) -> None:
+def _assert_provenance(chunks: list[PolicyChunk]) -> None:
     """No chunk reaches the index without complete provenance.
 
     This is the ingestion-side half of the guarantee the runtime relies on when
@@ -49,8 +49,8 @@ def _assert_provenance(chunks: List[PolicyChunk]) -> None:
             )
 
 
-def _assert_unique_ids(chunks: List[PolicyChunk]) -> None:
-    seen: Dict[str, int] = {}
+def _assert_unique_ids(chunks: list[PolicyChunk]) -> None:
+    seen: dict[str, int] = {}
     for chunk in chunks:
         seen[chunk.chunk_id] = seen.get(chunk.chunk_id, 0) + 1
     collisions = sorted(cid for cid, count in seen.items() if count > 1)
@@ -63,10 +63,10 @@ try:  # pragma: no cover
 
     @step(enable_cache=True)
     def chunk_documents_step(
-        documents: List[Dict[str, Any]],
+        documents: list[dict[str, Any]],
         max_chunk_chars: int = 1400,
         overlap_chars: int = 160,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         # `ingested_at` is deliberately left to default inside the step body
         # rather than being a pipeline parameter, so that ZenML caching keys on
         # the document content alone and a re-run with unchanged policies is a

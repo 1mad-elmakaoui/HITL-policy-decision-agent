@@ -12,7 +12,7 @@ so a metric change can always be traced to a specific passage.
 from __future__ import annotations
 
 import math
-from typing import Dict, Iterable, List, Sequence
+from collections.abc import Iterable, Sequence
 
 
 def recall_at_k(retrieved_ids: Sequence[str], relevant_ids: Iterable[str], k: int) -> float:
@@ -53,7 +53,7 @@ def ndcg_at_k(retrieved_ids: Sequence[str], relevant_ids: Iterable[str], k: int)
     return dcg / ideal if ideal else 0.0
 
 
-def evaluate_queries(results: List[Dict[str, object]], k: int) -> Dict[str, float]:
+def evaluate_queries(results: list[dict[str, object]], k: int) -> dict[str, float]:
     """Aggregate per-query metrics into the component-level report.
 
     ``results`` items carry ``retrieved_ids`` and ``relevant_ids``. Queries with
@@ -65,7 +65,7 @@ def evaluate_queries(results: List[Dict[str, object]], k: int) -> Dict[str, floa
     positives = [r for r in results if r.get("relevant_ids")]
     negatives = [r for r in results if not r.get("relevant_ids")]
 
-    def mean(values: List[float]) -> float:
+    def mean(values: list[float]) -> float:
         return sum(values) / len(values) if values else 0.0
 
     report = {

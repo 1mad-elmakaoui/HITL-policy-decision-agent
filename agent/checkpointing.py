@@ -20,9 +20,9 @@ resource. :func:`checkpointer_scope` is the supported way to obtain one.
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
 from langgraph.checkpoint.sqlite import SqliteSaver
 

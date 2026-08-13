@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from config.settings import Settings
 
@@ -101,7 +101,7 @@ class MockLLMClient:
         # freely is what makes the mock grounded: every sentence it returns is a
         # sentence that was actually retrieved.
         keywords = {w for w in re.findall(r"[a-z]{4,}", question.lower())}
-        scored: List[tuple] = []
+        scored: list[tuple] = []
         for order, passage in enumerate(passages):
             for position, sentence in enumerate(_sentences(passage["text"])):
                 overlap = len({w for w in re.findall(r"[a-z]{4,}", sentence.lower())} & keywords)
@@ -133,7 +133,7 @@ class MockLLMClient:
         )
 
 
-def _sentences(text: str) -> List[str]:
+def _sentences(text: str) -> list[str]:
     """Split passage text into whitespace-normalised sentences.
 
     The chunker prepends the section heading to the indexed text so the title
@@ -145,7 +145,7 @@ def _sentences(text: str) -> List[str]:
     return [s.strip() for s in re.split(r"(?<=[.:])\s+", body) if len(s.strip()) >= 25]
 
 
-def _infer_permission(sentences: List[str]) -> str:
+def _infer_permission(sentences: list[str]) -> str:
     joined = " ".join(sentences).lower()
     if re.search(r"\b(is not permitted|are not permitted|is prohibited|may not|are prohibited|not reimbursed|does not permit)\b", joined):
         return "conditional" if re.search(r"\b(only|unless|except|requires)\b", joined) else "no"
@@ -159,7 +159,7 @@ def _infer_permission(sentences: List[str]) -> str:
 class AnthropicLLMClient:
     """Live provider."""
 
-    def __init__(self, model: str, max_tokens: int = 1200, api_key: Optional[str] = None) -> None:
+    def __init__(self, model: str, max_tokens: int = 1200, api_key: str | None = None) -> None:
         try:
             import anthropic
         except ImportError as exc:  # pragma: no cover - live-only path
@@ -202,9 +202,9 @@ def _extract_block(prompt: str, name: str) -> str:
     return match.group(1).strip() if match else ""
 
 
-def _parse_evidence(block: str) -> List[Dict[str, Any]]:
+def _parse_evidence(block: str) -> list[dict[str, Any]]:
     """Parse the numbered evidence block the prompt template renders."""
-    passages: List[Dict[str, Any]] = []
+    passages: list[dict[str, Any]] = []
     for raw in re.split(r"\n(?=\[\d+\])", block):
         raw = raw.strip()
         if not raw:

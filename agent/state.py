@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import operator
-from typing import Annotated, Any, Dict, List, TypedDict
+from typing import Annotated, Any, TypedDict
 
 #risk levels 
 RISK_LOW = "low"
@@ -39,20 +39,20 @@ class PolicyReviewState(TypedDict, total=False):
     force_human_review: bool
 
     #retrieval (populated by retrieve_policy)
-    policy_passages: List[Dict[str, Any]]
+    policy_passages: list[dict[str, Any]]
     evidence_grade: str
     retrieval_error: str
 
     #preliminary assessment (populated by draft_assessment) 
     draft_answer: str
-    draft_basis: List[str]
-    draft_conditions: List[str]
+    draft_basis: list[str]
+    draft_conditions: list[str]
     draft_uncertainty: str
 
     #risk classification (populated by classify_risk)
     risk_level: str
     risk_reason: str
-    risk_signals: List[str]
+    risk_signals: list[str]
     risk_classifier: str
 
     #human review (populated by interrupt_for_review / apply_feedback)
@@ -65,14 +65,14 @@ class PolicyReviewState(TypedDict, total=False):
 
     #outcome (populated by finalize_decision / record_failure)
     final_answer: str
-    decision_record: Dict[str, Any]
+    decision_record: dict[str, Any]
     status: str
 
     #observability
     # `operator.add` makes this an append-only log across nodes, so the route a
     # request actually took survives in state and can be asserted in tests.
-    route_history: Annotated[List[str], operator.add]
-    errors: Annotated[List[str], operator.add]
+    route_history: Annotated[list[str], operator.add]
+    errors: Annotated[list[str], operator.add]
 
 
 def new_request_state(

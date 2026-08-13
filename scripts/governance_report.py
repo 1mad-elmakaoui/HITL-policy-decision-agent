@@ -18,7 +18,6 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List
 
 # Obligation -> what in this repository discharges it. Kept here rather than in
 # prose so it stays next to the check that proves each row.
@@ -47,8 +46,8 @@ AI_ACT_MAP = [
 ]
 
 
-def read_events(root: Path) -> List[Dict]:
-    events: List[Dict] = []
+def read_events(root: Path) -> list[dict]:
+    events: list[dict] = []
     for path in root.rglob("events.jsonl"):
         for line in path.read_text(encoding="utf-8").splitlines():
             line = line.strip()
@@ -61,7 +60,7 @@ def read_events(root: Path) -> List[Dict]:
     return events
 
 
-def read_index_report(root: Path) -> Dict:
+def read_index_report(root: Path) -> dict:
     for path in root.rglob("index-report.json"):
         try:
             return json.loads(path.read_text(encoding="utf-8"))
@@ -70,9 +69,9 @@ def read_index_report(root: Path) -> Dict:
     return {}
 
 
-def verify(events: List[Dict]) -> List[str]:
+def verify(events: list[dict]) -> list[str]:
     """Return a list of failures. Empty means the run is sound."""
-    failures: List[str] = []
+    failures: list[str] = []
 
     if not events:
         return ["No audit trail was found. The orchestration job produced no record."]
@@ -105,12 +104,12 @@ def verify(events: List[Dict]) -> List[str]:
     return failures
 
 
-def render(events: List[Dict], index: Dict, failures: List[str]) -> str:
+def render(events: list[dict], index: dict, failures: list[str]) -> str:
     paused = [e for e in events if e.get("event") == "node.paused"]
     resumed = [e for e in events if e.get("event") == "request.resumed"]
     threads = {e.get("thread_id") for e in events if e.get("thread_id")}
 
-    lines: List[str] = []
+    lines: list[str] = []
     add = lines.append
 
     add("## Governance evidence")
@@ -161,7 +160,7 @@ def render(events: List[Dict], index: Dict, failures: List[str]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("evidence_dir", type=Path)
     parser.add_argument("--out", type=Path, default=Path("compliance-evidence.md"))

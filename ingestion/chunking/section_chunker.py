@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import datetime as _dt
-from typing import List
 
 from shared.schema import ChunkMetadata, PolicyChunk, PolicyDocument, content_hash, make_chunk_id
 
@@ -12,10 +11,10 @@ def chunk_document(
     max_chunk_chars: int = 1400,
     overlap_chars: int = 160,
     ingested_at: str = "",
-) -> List[PolicyChunk]:
+) -> list[PolicyChunk]:
     """Turn one parsed document into retrievable chunks."""
     ingested_at = ingested_at or _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
-    chunks: List[PolicyChunk] = []
+    chunks: list[PolicyChunk] = []
     ordinal = 0
 
     for section in document.sections:
@@ -49,13 +48,13 @@ def chunk_document(
     return chunks
 
 
-def _split_section(body: str, max_chars: int, overlap: int) -> List[str]:
+def _split_section(body: str, max_chars: int, overlap: int) -> list[str]:
     """Split an over-long section on paragraph boundaries, with overlap."""
     if len(body) <= max_chars:
         return [body]
 
     paragraphs = [p.strip() for p in body.split("\n\n") if p.strip()]
-    parts: List[str] = []
+    parts: list[str] = []
     current = ""
 
     for paragraph in paragraphs:
@@ -71,7 +70,7 @@ def _split_section(body: str, max_chars: int, overlap: int) -> List[str]:
         parts.append(current)
 
     # A single paragraph longer than the maximum still has to be broken up.
-    final: List[str] = []
+    final: list[str] = []
     for part in parts:
         while len(part) > max_chars:
             cut = part.rfind(" ", 0, max_chars)

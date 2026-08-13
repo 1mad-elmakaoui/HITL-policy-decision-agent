@@ -21,8 +21,6 @@ from shared.embeddings import build_embedder, load_embedder_state
 from shared.schema import REQUIRED_METADATA_FIELDS
 from shared.vector_store import InMemoryPolicyVectorStore, VectorStoreUnavailable
 
-
-
 # Relevant policy is retrieved
 
 @pytest.mark.parametrize(

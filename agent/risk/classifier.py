@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from agent.llm.client import LLMClient, LLMError
 from agent.llm.prompts import RISK_CLASSIFIER_SYSTEM, render_risk_classifier_prompt
@@ -34,10 +34,10 @@ class RiskAssessment:
 
     level: str
     reason: str
-    signals: List[str] = field(default_factory=list)
+    signals: list[str] = field(default_factory=list)
     classifier: str = "deterministic"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "level": self.level,
             "reason": self.reason,
@@ -55,14 +55,14 @@ class RiskClassifier:
 
     def __init__(
         self,
-        settings: Optional[RiskSettings] = None,
-        llm: Optional[LLMClient] = None,
+        settings: RiskSettings | None = None,
+        llm: LLMClient | None = None,
     ) -> None:
         self._settings = settings or RiskSettings()
         self._llm = llm
 
     # ------------------------------------------------------------------ API
-    def classify(self, question: str, policy_passages: Optional[List[Dict[str, Any]]] = None) -> RiskAssessment:
+    def classify(self, question: str, policy_passages: list[dict[str, Any]] | None = None) -> RiskAssessment:
         deterministic = self.classify_deterministic(question)
 
         if not (self._settings.use_llm_second_opinion and self._llm is not None):
@@ -117,8 +117,8 @@ class RiskClassifier:
 
     # ------------------------------------------------------------- internals
     def _classify_with_llm(
-        self, question: str, policy_passages: List[Dict[str, Any]]
-    ) -> Optional[RiskAssessment]:
+        self, question: str, policy_passages: list[dict[str, Any]]
+    ) -> RiskAssessment | None:
         assert self._llm is not None
         raw = self._llm.complete(
             system=RISK_CLASSIFIER_SYSTEM,
@@ -141,7 +141,7 @@ class RiskClassifier:
         )
 
 
-def _explain(level: str, matched: List[RiskSignal]) -> str:
+def _explain(level: str, matched: list[RiskSignal]) -> str:
     if level == RISK_LOW or not matched:
         return (
             "No consequential employment action, policy exception or individual "
@@ -150,14 +150,14 @@ def _explain(level: str, matched: List[RiskSignal]) -> str:
     leading = [s for s in matched if s.level == level]
     rationales = [s.rationale for s in leading] or [s.rationale for s in matched]
     # De-duplicate while preserving order.
-    seen: List[str] = []
+    seen: list[str] = []
     for rationale in rationales:
         if rationale not in seen:
             seen.append(rationale)
     return " ".join(seen)
 
 
-def _extract_json(raw: str) -> Optional[Dict[str, Any]]:
+def _extract_json(raw: str) -> dict[str, Any] | None:
     text = (raw or "").strip()
     if not text:
         return None

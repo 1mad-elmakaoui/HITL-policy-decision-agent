@@ -16,7 +16,7 @@ That decision belongs to the graph.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 RISK_CLASSIFIER_SYSTEM = """You classify the risk level of a workplace policy question \
 for a governance workflow. You do not answer the question and you do not decide \
@@ -59,7 +59,7 @@ Return a single JSON object and nothing else:
 }"""
 
 
-def render_risk_classifier_prompt(question: str, policy_passages: List[Dict[str, Any]]) -> str:
+def render_risk_classifier_prompt(question: str, policy_passages: list[dict[str, Any]]) -> str:
     return f"""RISK_CLASSIFICATION_TASK
 
 <QUESTION>
@@ -74,7 +74,7 @@ Classify the risk level of the requested action."""
 
 
 def render_policy_assessment_prompt(
-    question: str, policy_passages: List[Dict[str, Any]], evidence_grade: str
+    question: str, policy_passages: list[dict[str, Any]], evidence_grade: str
 ) -> str:
     return f"""POLICY_ASSESSMENT_TASK
 
@@ -93,7 +93,7 @@ Assess the question against the evidence above. If the evidence grade is \
 plainly settles the question, and state what is missing in "uncertainty"."""
 
 
-def render_evidence(policy_passages: List[Dict[str, Any]]) -> str:
+def render_evidence(policy_passages: list[dict[str, Any]]) -> str:
     """Render passages with rank, citation and score.
 
     The score is included so the model can see how well-supported each passage
