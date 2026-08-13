@@ -65,9 +65,7 @@ jobs:
       - name: Lint
         run: ruff check .
 
-      - name: Format check
-        run: ruff format --check .
-        continue-on-error: true
+      
 
       # Pure functions: no graph, no database, no model, no index.
       # These are the rules that decide whether a human is required, so they

@@ -7,18 +7,18 @@ against an earlier one -
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any, Dict, List, Tuple
 
 from shared.embeddings import embedder_state_of, fit_embedder
 from shared.schema import PolicyChunk
 
 
 def embed_chunks(
-    chunks: list[dict[str, Any]],
+    chunks: List[Dict[str, Any]],
     provider: str = "hashing",
     model_name: str = "",
     dimension: int = 16384,
-) -> tuple[list[list[float]], dict[str, Any]]:
+) -> Tuple[List[List[float]], Dict[str, Any]]:
     """Fit the embedder to this corpus, then embed every chunk.
 
     Fitting happens here rather than at query time because IDF weights are a
@@ -60,25 +60,27 @@ def embed_chunks(
     return vectors, report
 
 
-try:  # pragma: no cover
-    from typing import Annotated
+# ---------------------------------------------------------------- ZenML step
+# Module level for the same reason as verify_documents.py: ZenML parses the
+# source of this function, and a nested definition has to be dedented first.
 
+
+def embed_chunks_step(
+    chunks: List[Dict[str, Any]],
+    provider: str = "hashing",
+    model_name: str = "",
+    dimension: int = 16384,
+) -> Tuple[
+    Annotated[List[List[float]], "chunk_embeddings"],
+    Annotated[Dict[str, Any], "embedding_report"],
+]:
+    vectors, report = embed_chunks(chunks, provider, model_name, dimension)
+    return vectors, report
+
+
+try:  # pragma: no cover
     from zenml import step
 
-    @step(enable_cache=True)
-    def embed_chunks_step(
-        chunks: list[dict[str, Any]],
-        provider: str = "hashing",
-        model_name: str = "",
-        dimension: int = 16384,
-    ) -> tuple[
-        Annotated[list[list[float]], "chunk_embeddings"],
-        Annotated[dict[str, Any], "embedding_report"],
-    ]:
-        # Explicit tuple literal -- see the note in verify_documents.py: ZenML
-        # detects multiple outputs from the AST of the `return` statement.
-        vectors, report = embed_chunks(chunks, provider, model_name, dimension)
-        return vectors, report
-
+    embed_chunks_step = step(enable_cache=True)(embed_chunks_step)
 except ImportError:  # pragma: no cover
     embed_chunks_step = None  # type: ignore[assignment]
