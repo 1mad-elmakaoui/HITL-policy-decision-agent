@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -220,6 +221,30 @@ def test_a_missing_thread_id_is_refused() -> None:
 # --------------------------------------------------------------------------
 # The real thing: recovery across an OS process boundary
 # --------------------------------------------------------------------------
+def _child_env(home: Path) -> dict:
+    """Environment for the resume subprocess.
+
+    Inherits the parent environment rather than replacing it. The isolation
+    this test needs is a separate *process* holding no objects and no graph,
+    not a scrubbed environment -- and a hand-built one is not portable:
+    dropping SYSTEMROOT on Windows leaves winsock unloadable, so `import
+    asyncio` fails with WinError 10106 before any project code runs.
+
+    Only what the test actually controls is overridden: the run mode, and HOME
+    so nothing is read from or written to the developer's real profile.
+    """
+    env = os.environ.copy()
+    env["POLICY_REVIEW_RUN_MODE"] = "mock"
+    env["HOME"] = str(home)
+    env["USERPROFILE"] = str(home)
+    # The child must resolve state from the settings the script passes it, not
+    # from anything the parent process happened to export.
+    for leaked in ("POLICY_REVIEW_VECTOR_STORE_DIR", "POLICY_REVIEW_CHECKPOINT_DB",
+                   "POLICY_REVIEW_OBSERVABILITY_LOG"):
+        env.pop(leaked, None)
+    return env
+
+
 _RESUME_SCRIPT = """
 import json, sys
 sys.path.insert(0, {project_root!r})
@@ -287,7 +312,7 @@ def test_a_separate_process_resumes_the_interrupted_request(
         text=True,
         timeout=180,
         cwd=str(PROJECT_ROOT),
-        env={"PATH": "/usr/bin:/bin", "POLICY_REVIEW_RUN_MODE": "mock", "HOME": str(tmp_path)},
+        env=_child_env(tmp_path),
     )
     assert completed.returncode == 0, f"resume process failed:\n{completed.stderr}"
 
@@ -338,7 +363,7 @@ def test_the_original_process_sees_the_completion(
         text=True,
         timeout=180,
         cwd=str(PROJECT_ROOT),
-        env={"PATH": "/usr/bin:/bin", "POLICY_REVIEW_RUN_MODE": "mock", "HOME": str(tmp_path)},
+        env=_child_env(tmp_path),
     )
     assert completed.returncode == 0, completed.stderr
 
